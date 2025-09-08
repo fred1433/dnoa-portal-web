@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNOA Portal Data Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        input {
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .logs-section {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .logs-section.active {
+            display: block;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .logs-header h3 {
+            color: #374151;
+            font-size: 18px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.running {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .logs-container {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .log-line {
+            margin-bottom: 8px;
+            padding: 4px 0;
+            color: #374151;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .summary-card h4 {
+            color: #6b7280;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .summary-card .value {
+            color: #111827;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .summary-card .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦷 DNOA Portal Data Extractor</h1>
+            <p>Extract patient eligibility and benefits information</p>
+        </div>
+        
+        <div class="content">
+            <form id="extractForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" required placeholder="SOPHIE">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" required placeholder="ROBINSON">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="subscriberId">Subscriber ID</label>
+                        <input type="text" id="subscriberId" name="subscriberId" required placeholder="825978894">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dateOfBirth">Date of Birth</label>
+                        <input type="text" id="dateOfBirth" name="dateOfBirth" required placeholder="MM/DD/YYYY or YYYY-MM-DD">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn" id="extractBtn">
+                    <span id="btnText">Extract Data</span>
+                    <span class="spinner" style="display: none;"></span>
+                </button>
+            </form>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="logs-section" id="logsSection">
+                <div class="logs-header">
+                    <h3>Extraction Progress</h3>
+                    <span class="status-badge running" id="statusBadge">Running</span>
+                </div>
+                <div class="logs-container" id="logsContainer"></div>
+            </div>
+            
+            <div class="results-section" id="resultsSection">
+                <h3 style="color: #374151; margin-bottom: 20px;">Extraction Results</h3>
+                
+                <div class="summary-grid" id="summaryGrid"></div>
+                
+                <div class="action-buttons">
+                    <button class="btn" onclick="downloadJSON()">
+                        📥 Download Full JSON
+                    </button>
+                    <button class="btn" onclick="viewJSON()">
+                        👁️ View JSON Data
+                    </button>
+                    <button class="btn" onclick="resetForm()">
+                        🔄 New Extraction
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get API key from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKey = urlParams.get('key') || 'demo2024';
+        
+        let eventSource = null;
+        let extractedData = null;
+        
+        const form = document.getElementById('extractForm');
+        const logsSection = document.getElementById('logsSection');
+        const logsContainer = document.getElementById('logsContainer');
+        const resultsSection = document.getElementById('resultsSection');
+        const errorMessage = document.getElementById('errorMessage');
+        const statusBadge = document.getElementById('statusBadge');
+        const extractBtn = document.getElementById('extractBtn');
+        const btnText = document.getElementById('btnText');
+        const spinner = extractBtn.querySelector('.spinner');
+        
+        // Pre-fill test data for demo
+        document.getElementById('firstName').value = 'SOPHIE';
+        document.getElementById('lastName').value = 'ROBINSON';
+        document.getElementById('subscriberId').value = '825978894';
+        document.getElementById('dateOfBirth').value = '09/27/2016';
+        
+        function addLog(message) {
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            logLine.textContent = message;
+            logsContainer.appendChild(logLine);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        function connectToSSE() {
+            eventSource = new EventSource(`/api/stream?key=${apiKey}`);
+            
+            eventSource.addEventListener('connected', (e) => {
+                console.log('Connected to SSE');
+            });
+            
+            eventSource.addEventListener('log', (e) => {
+                const data = JSON.parse(e.data);
+                addLog(data.message);
+            });
+            
+            eventSource.addEventListener('complete', (e) => {
+                statusBadge.textContent = 'Success';
+                statusBadge.className = 'status-badge success';
+            });
+            
+            eventSource.addEventListener('error', (e) => {
+                if (e.data) {
+                    const data = JSON.parse(e.data);
+                    showError(data.error);
+                }
+                statusBadge.textContent = 'Error';
+                statusBadge.className = 'status-badge error';
+            });
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.add('active');
+        }
+        
+        function hideError() {
+            errorMessage.classList.remove('active');
+        }
+        
+        function displayResults(data) {
+            const summary = data.summary;
+            const summaryGrid = document.getElementById('summaryGrid');
+            
+            summaryGrid.innerHTML = `
+                <div class="summary-card">
+                    <h4>Patient</h4>
+                    <div class="value">${summary.patientName}</div>
+                    <div class="subtitle">ID: ${summary.memberId}</div>
+                </div>
+                
+                <div class="summary-card">
+                    <h4>Plan</h4>
+                    <div class="value">${summary.status}</div>
+                    <div class="subtitle">${summary.planName}</div>
+                </div>
+                
+                ${summary.deductible ? `
+                <div class="summary-card">
+                    <h4>Deductible</h4>
+                    <div class="value">$${summary.deductible.remaining}</div>
+                    <div class="subtitle">Remaining of $${summary.deductible.amount}</div>
+                </div>
+                ` : ''}
+                
+                ${summary.annualMaximum ? `
+                <div class="summary-card">
+                    <h4>Annual Maximum</h4>
+                    <div class="value">$${summary.annualMaximum.remaining}</div>
+                    <div class="subtitle">Remaining of $${summary.annualMaximum.amount}</div>
+                </div>
+                ` : ''}
+                
+                <div class="summary-card">
+                    <h4>Benefits</h4>
+                    <div class="value">${summary.benefitCategories}</div>
+                    <div class="subtitle">Coverage categories</div>
+                </div>
+                
+                <div class="summary-card">
+                    <h4>History</h4>
+                    <div class="value">${summary.procedureHistory}</div>
+                    <div class="subtitle">Past procedures</div>
+                </div>
+            `;
+            
+            resultsSection.classList.add('active');
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Reset UI
+            hideError();
+            logsContainer.innerHTML = '';
+            logsSection.classList.add('active');
+            resultsSection.classList.remove('active');
+            statusBadge.textContent = 'Running';
+            statusBadge.className = 'status-badge running';
+            
+            // Disable button
+            extractBtn.disabled = true;
+            btnText.textContent = 'Extracting...';
+            spinner.style.display = 'inline-block';
+            
+            // Connect to SSE
+            connectToSSE();
+            
+            // Get form data
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch(`/api/extract?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    extractedData = result.data;
+                    displayResults(result.data);
+                } else {
+                    showError(result.error);
+                }
+                
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                // Re-enable button
+                extractBtn.disabled = false;
+                btnText.textContent = 'Extract Data';
+                spinner.style.display = 'none';
+                
+                // Disconnect SSE
+                if (eventSource) {
+                    eventSource.close();
+                }
+            }
+        });
+        
+        function downloadJSON() {
+            if (!extractedData) return;
+            
+            const dataStr = JSON.stringify(extractedData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dnoa-extract-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function viewJSON() {
+            if (!extractedData) return;
+            
+            const jsonStr = JSON.stringify(extractedData, null, 2);
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <html>
+                <head><title>JSON Data</title></head>
+                <body>
+                    <pre style="font-family: monospace; padding: 20px;">
+                        ${jsonStr.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </pre>
+                </body>
+                </html>
+            `);
+        }
+        
+        function resetForm() {
+            form.reset();
+            logsSection.classList.remove('active');
+            resultsSection.classList.remove('active');
+            hideError();
+            extractedData = null;
+            
+            // Re-fill demo data
+            document.getElementById('firstName').value = 'SOPHIE';
+            document.getElementById('lastName').value = 'ROBINSON';
+            document.getElementById('subscriberId').value = '825978894';
+            document.getElementById('dateOfBirth').value = '09/27/2016';
+        }
+    </script>
+</body>
+</html>

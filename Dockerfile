@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install Node dependencies
-RUN npm ci --only=production
+RUN npm install
 
 # Copy application files
 COPY . .
@@ -14,6 +14,8 @@ COPY . .
 # The browsers are already installed in the Playwright image
 # No need to run playwright install
 
+# Use PORT environment variable from Render
+ENV PORT=10000
 EXPOSE 10000
 
 CMD ["node", "server.js"]

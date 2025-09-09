@@ -1,0 +1,20 @@
+# Version simple pour test rapide
+FROM node:18-slim
+
+# Install wget for Playwright
+RUN apt-get update && apt-get install -y \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+ENV PORT=10000
+EXPOSE 10000
+
+CMD ["node", "server.js"]

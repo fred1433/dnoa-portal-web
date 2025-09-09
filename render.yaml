@@ -1,7 +1,8 @@
 services:
   - type: web
     name: dnoa-portal-demo
-    runtime: docker
+    env: docker
+    dockerfilePath: ./Dockerfile
     repo: https://github.com/fred1433/dnoa-portal-web
     branch: master
     envVars:
@@ -13,3 +14,5 @@ services:
         value: demo2024secure
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000

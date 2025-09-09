@@ -1,11 +1,9 @@
 services:
   - type: web
     name: dnoa-portal-demo
-    runtime: node
+    runtime: docker
     repo: https://github.com/fred1433/dnoa-portal-web
     branch: master
-    buildCommand: npm install && npx playwright install-deps && npx playwright install chromium
-    startCommand: node server.js
     envVars:
       - key: DNOA_USERNAME
         value: payorportalsdbmail

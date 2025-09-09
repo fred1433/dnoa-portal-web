@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const DNOAService = require('./dnoa-service');
+const DentaQuestService = require('./dentaquest-service');
 require('dotenv').config();
 
 const app = express();
@@ -55,7 +56,7 @@ function broadcastLog(message) {
 
 // Main extraction endpoint
 app.post('/api/extract', checkApiKey, async (req, res) => {
-  const { subscriberId, dateOfBirth, firstName, lastName } = req.body;
+  const { subscriberId, dateOfBirth, firstName, lastName, portal = 'DNOA' } = req.body;
   
   // Validation
   if (!subscriberId || !dateOfBirth || !firstName || !lastName) {
@@ -78,9 +79,15 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     lastName: lastName.trim().toUpperCase()
   };
   
-  broadcastLog('🚀 Starting extraction for ' + patient.firstName + ' ' + patient.lastName);
+  broadcastLog(`🚀 Starting ${portal} extraction for ${patient.firstName} ${patient.lastName}`);
   
-  const service = new DNOAService();
+  // Select service based on portal
+  let service;
+  if (portal === 'DentaQuest') {
+    service = new DentaQuestService();
+  } else {
+    service = new DNOAService();
+  }
   
   try {
     // Initialize with headless mode

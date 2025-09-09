@@ -443,18 +443,49 @@
                 </div>
                 ` : ''}
                 
+                <div class="summary-card" style="background: #d1fae5; border-color: #10b981;">
+                    <h4 style="color: #065f46;">🦷 CDT PROCEDURE CODES</h4>
+                    <div class="value" style="color: #065f46;">${summary.totalCDTCodes || summary.procedureHistory}</div>
+                    <div class="subtitle" style="color: #047857;">Dental procedures extracted!</div>
+                </div>
+                
                 <div class="summary-card">
                     <h4>Benefits</h4>
                     <div class="value">${summary.benefitCategories}</div>
                     <div class="subtitle">Coverage categories</div>
                 </div>
-                
-                <div class="summary-card">
-                    <h4>History</h4>
-                    <div class="value">${summary.procedureHistory}</div>
-                    <div class="subtitle">Past procedures</div>
-                </div>
             `;
+            
+            // Add CDT codes details section if available
+            if (summary.cdtCodes && summary.cdtCodes.length > 0) {
+                const cdtSection = document.createElement('div');
+                cdtSection.style.marginTop = '30px';
+                cdtSection.innerHTML = `
+                    <h3 style="color: #065f46; margin-bottom: 15px;">
+                        ✅ CDT Codes Successfully Extracted - Patient's Dental Care History
+                    </h3>
+                    <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 10px; padding: 20px;">
+                        <p style="color: #047857; margin-bottom: 15px; font-weight: 600;">
+                            We have successfully extracted ${summary.totalCDTCodes} CDT procedure codes for ${summary.patientName}:
+                        </p>
+                        <div style="max-height: 200px; overflow-y: auto;">
+                            ${summary.cdtCodes.slice(0, 10).map(cdt => `
+                                <div style="padding: 8px; border-bottom: 1px solid #d1fae5;">
+                                    <strong style="color: #065f46;">${cdt.code}</strong> - 
+                                    ${cdt.description || 'Dental Procedure'}
+                                    ${cdt.date && cdt.date !== 'N/A' ? ` (${cdt.date})` : ''}
+                                </div>
+                            `).join('')}
+                            ${summary.cdtCodes.length > 10 ? `
+                                <div style="padding: 8px; color: #047857; font-style: italic;">
+                                    ... and ${summary.cdtCodes.length - 10} more procedures
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                resultsSection.insertBefore(cdtSection, resultsSection.querySelector('.action-buttons'));
+            }
             
             resultsSection.classList.add('active');
         }

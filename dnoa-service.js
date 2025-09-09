@@ -209,6 +209,40 @@ class DNOAService {
       
       onLog('✅ Extraction complete!');
       
+      // Extract CDT codes from procedure history
+      const cdtCodes = [];
+      if (allData.procedureHistory?.data || allData.procedureHistory) {
+        const procedures = allData.procedureHistory?.data || allData.procedureHistory;
+        if (Array.isArray(procedures)) {
+          procedures.forEach(proc => {
+            if (proc.procedureCode) {
+              cdtCodes.push({
+                code: proc.procedureCode,
+                description: proc.procedureDescription || proc.description || 'N/A',
+                date: proc.serviceDate || proc.date || 'N/A',
+                status: proc.status || 'Completed'
+              });
+            }
+          });
+        }
+      }
+      
+      // Extract CDT codes from benefits if available
+      if (allData.benefits?.categories) {
+        allData.benefits.categories.forEach(cat => {
+          if (cat.procedureCode && !cdtCodes.find(c => c.code === cat.procedureCode)) {
+            cdtCodes.push({
+              code: cat.procedureCode,
+              description: cat.name || cat.description || 'Coverage',
+              coverage: cat.coinsuranceInNetwork + '%',
+              type: 'Benefit'
+            });
+          }
+        });
+      }
+      
+      onLog(`✅ Found ${cdtCodes.length} CDT procedure codes`);
+      
       // Create summary for display
       allData.summary = {
         patientName: `${patient.firstName} ${patient.lastName}`,
@@ -226,7 +260,9 @@ class DNOAService {
           remaining: max.remainingInNetwork
         } : null,
         benefitCategories: allData.benefits?.categories?.length || 0,
-        procedureHistory: allData.procedureHistory?.data?.length || allData.procedureHistory?.length || 0
+        procedureHistory: allData.procedureHistory?.data?.length || allData.procedureHistory?.length || 0,
+        cdtCodes: cdtCodes,
+        totalCDTCodes: cdtCodes.length
       };
       
       return allData;

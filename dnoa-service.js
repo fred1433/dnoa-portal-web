@@ -215,12 +215,13 @@ class DNOAService {
         const procedures = allData.procedureHistory?.data || allData.procedureHistory;
         if (Array.isArray(procedures)) {
           procedures.forEach(proc => {
-            if (proc.procedureCode) {
+            if (proc.code) {  // Changed from proc.procedureCode to proc.code
               cdtCodes.push({
-                code: proc.procedureCode,
-                description: proc.procedureDescription || proc.description || 'N/A',
-                date: proc.serviceDate || proc.date || 'N/A',
-                status: proc.status || 'Completed'
+                code: proc.code,
+                description: proc.description || 'N/A',
+                date: proc.serviceDate || 'N/A',
+                toothNumber: proc.toothNumber || '',
+                surfaces: proc.surfaces || ''
               });
             }
           });

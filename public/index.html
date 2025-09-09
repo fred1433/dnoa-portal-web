@@ -305,22 +305,22 @@
                     
                     <div class="form-group">
                         <label for="firstName">First Name</label>
-                        <input type="text" id="firstName" name="firstName" required placeholder="SOPHIE">
+                        <input type="text" id="firstName" name="firstName" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="lastName">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" required placeholder="ROBINSON">
+                        <input type="text" id="lastName" name="lastName" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="subscriberId">Subscriber ID</label>
-                        <input type="text" id="subscriberId" name="subscriberId" required placeholder="825978894">
+                        <input type="text" id="subscriberId" name="subscriberId" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="dateOfBirth">Date of Birth</label>
-                        <input type="text" id="dateOfBirth" name="dateOfBirth" required placeholder="MM/DD/YYYY or YYYY-MM-DD">
+                        <input type="text" id="dateOfBirth" name="dateOfBirth" required placeholder="MM/DD/YYYY">
                     </div>
                 </div>
                 
@@ -364,6 +364,46 @@
         // Get API key from URL params
         const urlParams = new URLSearchParams(window.location.search);
         const apiKey = urlParams.get('key') || 'demo2024';
+        
+        // Test data for each portal
+        const testData = {
+            'DNOA': {
+                firstName: 'SOPHIE',
+                lastName: 'ROBINSON',
+                subscriberId: '825978894',
+                dateOfBirth: '01/15/1990'
+            },
+            'DentaQuest': {
+                firstName: 'Cason',
+                lastName: 'Wright',
+                subscriberId: '710875473',
+                dateOfBirth: '03/29/2016'
+            }
+        };
+        
+        // Auto-fill form when portal changes
+        document.getElementById('portal').addEventListener('change', function(e) {
+            const portal = e.target.value;
+            if (testData[portal]) {
+                const data = testData[portal];
+                document.getElementById('firstName').value = data.firstName;
+                document.getElementById('lastName').value = data.lastName;
+                document.getElementById('subscriberId').value = data.subscriberId;
+                document.getElementById('dateOfBirth').value = data.dateOfBirth;
+            }
+        });
+        
+        // Fill default values on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const portal = document.getElementById('portal').value;
+            if (testData[portal]) {
+                const data = testData[portal];
+                document.getElementById('firstName').value = data.firstName;
+                document.getElementById('lastName').value = data.lastName;
+                document.getElementById('subscriberId').value = data.subscriberId;
+                document.getElementById('dateOfBirth').value = data.dateOfBirth;
+            }
+        });
         
         let eventSource = null;
         let extractedData = null;

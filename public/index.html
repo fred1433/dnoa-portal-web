@@ -598,7 +598,14 @@
             
             // Add CDT codes details section if available
             if (summary.cdtCodes && summary.cdtCodes.length > 0) {
+                // First, remove any existing CDT section
+                const existingCdtSection = document.getElementById('cdtSection');
+                if (existingCdtSection) {
+                    existingCdtSection.remove();
+                }
+                
                 const cdtSection = document.createElement('div');
+                cdtSection.id = 'cdtSection'; // Add ID to identify it later
                 cdtSection.style.marginTop = '30px';
                 cdtSection.innerHTML = `
                     <h3 style="color: #065f46; margin-bottom: 15px;">

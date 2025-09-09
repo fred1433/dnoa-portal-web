@@ -1,4 +1,6 @@
 node_modules/
 .env
 .dnoa-session/
+.dentaquest-session/
 *.log
+.DS_Store

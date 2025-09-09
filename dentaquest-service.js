@@ -3,9 +3,11 @@ const fs = require('fs');
 const path = require('path');
 
 const SESSION_DIR = path.join(process.cwd(), '.dentaquest-session');
+const STORAGE_STATE_FILE = path.join(SESSION_DIR, 'storageState.json');
 
 class DentaQuestService {
   constructor() {
+    this.browser = null;
     this.context = null;
     this.page = null;
     this.isFirstRun = !fs.existsSync(SESSION_DIR);
@@ -18,21 +20,33 @@ class DentaQuestService {
     onLog('🚀 Initializing DentaQuest service...');
     
     if (this.isFirstRun) {
-      onLog('🆕 First run - Creating persistent profile');
+      onLog('🆕 First run - Creating session directory');
       fs.mkdirSync(SESSION_DIR, { recursive: true });
     } else {
-      onLog('✅ Using existing session profile');
+      onLog('✅ Using existing session');
     }
 
-    // Use persistent context like DNOA
-    this.context = await chromium.launchPersistentContext(SESSION_DIR, {
+    // EXACT MetLife architecture: browser + newContext
+    this.browser = await chromium.launch({
       headless,
+      args: ['--disable-blink-features=AutomationControlled']
+    });
+
+    const contextOptions = {
       viewport: { width: 1920, height: 1080 },
       locale: 'en-US',
       timezoneId: 'America/New_York',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      args: ['--disable-blink-features=AutomationControlled']
-    });
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    };
+
+    // Load saved storage state if it exists
+    if (fs.existsSync(STORAGE_STATE_FILE)) {
+      contextOptions.storageState = STORAGE_STATE_FILE;
+      onLog('🍪 Loaded saved cookies and storage');
+    }
+
+    // Create context from browser (MetLife style)
+    this.context = await this.browser.newContext(contextOptions);
 
     this.page = await this.context.newPage();
     onLog('✅ Browser context created');
@@ -70,12 +84,21 @@ class DentaQuestService {
         
         await this.page.waitForURL('**/provideraccess.dentaquest.com/**', { timeout: 30000 });
         onLog('✅ Logged in successfully');
+        
+        // Save the session after successful login
+        await this.saveSession(onLog);
       } catch (e) {
         onLog('⚠️ Login may have failed or already logged in');
       }
     } else {
       onLog('✅ Already logged in - session valid');
     }
+  }
+
+  async saveSession(onLog = console.log) {
+    // Save the complete storage state (cookies, localStorage, sessionStorage)
+    await this.context.storageState({ path: STORAGE_STATE_FILE });
+    onLog('💾 Session saved (cookies + storage)');
   }
 
   async extractPatientData(patient, onLog = console.log) {
@@ -518,6 +541,9 @@ class DentaQuestService {
   async close() {
     if (this.context) {
       await this.context.close();
+    }
+    if (this.browser) {
+      await this.browser.close();
     }
   }
 }

@@ -3,9 +3,11 @@ const fs = require('fs');
 const path = require('path');
 
 const SESSION_DIR = path.join(process.cwd(), '.dnoa-session');
+const STORAGE_STATE_FILE = path.join(SESSION_DIR, 'storageState.json');
 
 class DNOAService {
   constructor() {
+    this.browser = null;
     this.context = null;
     this.page = null;
     this.isFirstRun = !fs.existsSync(SESSION_DIR);
@@ -15,23 +17,41 @@ class DNOAService {
     onLog('🚀 Initializing DNOA service...');
     
     if (this.isFirstRun) {
-      onLog('🆕 First run - Creating persistent profile');
+      onLog('🆕 First run - Creating session directory');
       fs.mkdirSync(SESSION_DIR, { recursive: true });
     } else {
-      onLog('✅ Using existing session profile');
+      onLog('✅ Using existing session');
     }
 
-    // Use launchPersistentContext for session persistence
-    this.context = await chromium.launchPersistentContext(SESSION_DIR, {
+    // EXACT MetLife architecture: browser + newContext
+    this.browser = await chromium.launch({
       headless,
-      viewport: { width: 1280, height: 720 },
-      locale: 'en-US',
-      timezoneId: 'America/New_York',
       args: ['--disable-blink-features=AutomationControlled']
     });
 
+    const contextOptions = {
+      viewport: { width: 1280, height: 720 },
+      locale: 'en-US',
+      timezoneId: 'America/New_York'
+    };
+
+    // Load saved storage state if it exists (cookies, localStorage, etc.)
+    if (fs.existsSync(STORAGE_STATE_FILE)) {
+      contextOptions.storageState = STORAGE_STATE_FILE;
+      onLog('🍪 Loaded saved cookies and storage');
+    }
+
+    // Create context from browser (MetLife style)
+    this.context = await this.browser.newContext(contextOptions);
+
     this.page = await this.context.newPage();
     onLog('✅ Browser context created');
+  }
+
+  async saveSession(onLog = console.log) {
+    // Save the complete storage state (cookies, localStorage, sessionStorage)
+    await this.context.storageState({ path: STORAGE_STATE_FILE });
+    onLog('💾 Session saved (cookies + storage)');
   }
 
   async ensureLoggedIn(onLog = console.log) {
@@ -44,12 +64,40 @@ class DNOAService {
     
     await this.page.waitForTimeout(3000);
     
-    // Check if we need to login by looking for login form elements
-    const bodyText = await this.page.textContent('body') || '';
-    const needsLogin = bodyText.includes('User ID') || bodyText.includes('Password');
+    // Better login detection - check multiple indicators
+    let needsLogin = false;
+    try {
+      // First check URL - if it contains /member or /search, we're logged in
+      const currentUrl = this.page.url();
+      if (currentUrl.includes('/member') || currentUrl.includes('/search')) {
+        onLog('✅ Already on member/search page - logged in!');
+        needsLogin = false;
+      } else {
+        // Check for member search elements (positive indicator of being logged in)
+        const hasSearchElements = await this.page.locator('[placeholder*="Member"], [placeholder*="Subscriber"], [placeholder*="Date of Birth"]').count() > 0;
+        
+        if (hasSearchElements) {
+          onLog('✅ Member search elements found - already logged in!');
+          needsLogin = false;
+        } else {
+          // Only check for login form if we don't see search elements
+          const loginForm = await this.page.locator('input[placeholder*="User ID"], input[name="username"]').first();
+          needsLogin = await loginForm.isVisible({ timeout: 2000 });
+          
+          if (needsLogin) {
+            onLog('📝 Login form visible - need to login');
+          } else {
+            onLog('✅ No login form visible - assuming logged in');
+          }
+        }
+      }
+    } catch (e) {
+      onLog('⚠️ Could not detect login status, assuming logged in');
+      needsLogin = false;
+    }
     
     if (needsLogin) {
-      onLog('📝 Logging in...');
+      onLog('📝 Entering credentials...');
       
       const username = process.env.DNOA_USERNAME || 'payorportalsdbmail';
       const password = process.env.DNOA_PASSWORD || 'payoraccess1';
@@ -66,6 +114,9 @@ class DNOAService {
         await this.page.getByRole('button', { name: 'Login' }).click();
         await this.page.waitForTimeout(5000);
         onLog('✅ Logged in successfully');
+        
+        // Save the session after successful login
+        await this.saveSession(onLog);
       } catch (e) {
         onLog('⚠️ Login form not found, may already be logged in');
       }
@@ -277,6 +328,9 @@ class DNOAService {
   async close() {
     if (this.context) {
       await this.context.close();
+    }
+    if (this.browser) {
+      await this.browser.close();
     }
   }
 }

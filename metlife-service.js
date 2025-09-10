@@ -57,6 +57,13 @@ class MetLifeService {
       locale: 'en-US',
       timezoneId: 'America/New_York'
     };
+    
+    // Enable tracing for debugging (especially in production)
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+    if (isProduction || process.env.ENABLE_TRACE) {
+      this.traceFile = path.join(__dirname, `metlife-trace-${Date.now()}.zip`);
+      onLog(`🎬 Recording trace to: ${this.traceFile}`);
+    }
 
     // Charger le profil Chrome persistant si existe
     if (fs.existsSync(this.userDataDir)) {
@@ -71,6 +78,16 @@ class MetLifeService {
     }
 
     this.context = await this.browser.newContext(contextOptions);
+    
+    // Start tracing if enabled
+    if (this.traceFile) {
+      await this.context.tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: true
+      });
+    }
+    
     this.page = await this.context.newPage();
     
     // NE PAS bloquer les fonts ! MetLife en a besoin pour le rendu
@@ -646,12 +663,30 @@ class MetLifeService {
   }
 
   async close() {
+    // Stop tracing and save if enabled
+    if (this.traceFile && this.context) {
+      try {
+        await this.context.tracing.stop({ path: this.traceFile });
+        console.log(`📦 Trace saved to: ${this.traceFile}`);
+        console.log(`   View with: npx playwright show-trace ${this.traceFile}`);
+        
+        // Store trace path for later retrieval
+        this.lastTraceFile = this.traceFile;
+      } catch (error) {
+        console.error('Failed to save trace:', error);
+      }
+    }
+    
     if (this.browser) {
       await this.browser.close();
       this.browser = null;
       this.context = null;
       this.page = null;
     }
+  }
+  
+  getLastTraceFile() {
+    return this.lastTraceFile;
   }
 }
 

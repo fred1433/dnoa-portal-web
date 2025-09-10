@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const DNOAService = require('./dnoa-service');
 const DentaQuestService = require('./dentaquest-service');
+const fs = require('fs');
 const MetLifeService = require('./metlife-service');
 require('dotenv').config();
 
@@ -159,12 +160,76 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     
   } finally {
     await service.close();
+    
+    // If MetLife and trace was recorded, include trace info in response
+    if (portal === 'MetLife' && service.getLastTraceFile) {
+      const traceFile = service.getLastTraceFile();
+      if (traceFile) {
+        const filename = path.basename(traceFile);
+        broadcastLog(`🎬 Trace available: /api/trace/${filename}?key=${API_KEY}`);
+      }
+    }
   }
 });
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// Download trace files
+app.get('/api/trace/:filename', (req, res) => {
+  const { filename } = req.params;
+  const apiKey = req.query.key;
+  
+  // Check API key
+  if (apiKey !== API_KEY) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  // Security: only allow .zip files in the current directory
+  if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/')) {
+    return res.status(400).json({ error: 'Invalid filename' });
+  }
+  
+  const filePath = path.join(__dirname, filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Trace file not found' });
+  }
+  
+  // Send file
+  res.download(filePath, filename, (err) => {
+    if (err) {
+      console.error('Error sending trace file:', err);
+      res.status(500).json({ error: 'Failed to send trace file' });
+    }
+  });
+});
+
+// List available traces
+app.get('/api/traces', (req, res) => {
+  const apiKey = req.query.key;
+  
+  if (apiKey !== API_KEY) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  const traceFiles = fs.readdirSync(__dirname)
+    .filter(file => file.startsWith('metlife-trace-') && file.endsWith('.zip'))
+    .map(file => {
+      const stats = fs.statSync(path.join(__dirname, file));
+      return {
+        filename: file,
+        size: stats.size,
+        created: stats.mtime,
+        downloadUrl: `/api/trace/${file}?key=${API_KEY}`
+      };
+    })
+    .sort((a, b) => b.created - a.created);
+  
+  res.json({ traces: traceFiles });
 });
 
 // Serve the main page

@@ -83,21 +83,28 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
   
   broadcastLog(`🚀 Starting ${portal} extraction for ${patient.firstName} ${patient.lastName}`);
   
-  // Select service based on portal
+  // Select service based on portal (case-insensitive)
   let service;
-  if (portal === 'DentaQuest') {
+  const portalLower = portal.toLowerCase();
+  
+  if (portalLower === 'dentaquest') {
     service = new DentaQuestService();
-  } else if (portal === 'MetLife') {
+  } else if (portalLower === 'metlife') {
     service = new MetLifeService();
-  } else {
+  } else if (portalLower === 'dnoa') {
     service = new DNOAService();
+  } else {
+    return res.status(400).json({ 
+      success: false, 
+      error: `Unknown portal: ${portal}. Valid options are: DentaQuest, MetLife, DNOA` 
+    });
   }
   
   try {
     // Initialize with headless mode
     const isHeadless = true; // Testons en headless pour tous
     
-    if (portal === 'MetLife') {
+    if (portalLower === 'metlife') {
       // MetLife needs OTP handler
       let otpPromiseResolve = null;
       const otpPromise = new Promise(resolve => { otpPromiseResolve = resolve; });
@@ -126,7 +133,7 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     
     // Extract data
     let data;
-    if (portal === 'MetLife') {
+    if (portalLower === 'metlife') {
       const result = await service.extractPatientData(
         patient.subscriberId,
         patient.lastName,
@@ -157,7 +164,7 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     broadcastLog('❌ Error: ' + error.message);
     
     // Add more context for MetLife errors
-    if (portal === 'MetLife' && error.message.includes('authentication')) {
+    if (portalLower === 'metlife' && error.message.includes('authentication')) {
       broadcastLog('⚠️ MetLife authentication issues in production are known - session cookies are not portable between environments');
       broadcastLog('💡 Solution: Need to implement direct authentication on production server');
     }
@@ -178,7 +185,7 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     await service.close();
     
     // If MetLife and trace was recorded, include trace info in response
-    if (portal === 'MetLife' && service.getLastTraceFile) {
+    if (portalLower === 'metlife' && service.getLastTraceFile) {
       const traceFile = service.getLastTraceFile();
       if (traceFile) {
         const filename = path.basename(traceFile);

@@ -55,11 +55,24 @@ class DentaQuestService {
   async ensureLoggedIn(onLog = console.log) {
     onLog('🔐 Checking login status...');
     
-    // Check if we're already logged in by going to the main page
-    await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
-      waitUntil: 'domcontentloaded',
-      timeout: 30000 
-    });
+    // Check if we're already logged in by going to the main page (with retry)
+    try {
+      await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000 
+      });
+    } catch (error) {
+      if (error.message.includes('ERR_ABORTED') || error.message.includes('ERR_NETWORK')) {
+        onLog('⚠️ Network error, retrying...');
+        await this.page.waitForTimeout(2000);
+        await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
+          waitUntil: 'domcontentloaded',
+          timeout: 30000 
+        });
+      } else {
+        throw error;
+      }
+    }
     
     // Check if we're on the login page or already in the app
     const currentUrl = this.page.url();

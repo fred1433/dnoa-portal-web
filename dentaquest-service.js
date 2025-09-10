@@ -119,10 +119,14 @@ class DentaQuestService {
     };
     
     try {
-      // Navigate to search page
-      await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
-        waitUntil: 'domcontentloaded' 
-      });
+      // Navigate to search page only if not already there
+      const currentUrl = this.page.url();
+      if (!currentUrl.includes('provideraccess.dentaquest.com/s/')) {
+        await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
+          waitUntil: 'domcontentloaded',
+          timeout: 10000 
+        });
+      }
       
       // Select location and provider
       onLog('📍 Setting location and provider...');

@@ -99,10 +99,26 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     
     if (portal === 'MetLife') {
       // MetLife needs OTP handler
+      let otpPromiseResolve = null;
+      const otpPromise = new Promise(resolve => { otpPromiseResolve = resolve; });
+      
+      // Store OTP resolver for later use
+      req.app.locals.otpResolvers = req.app.locals.otpResolvers || {};
+      req.app.locals.otpResolvers[req.id || Date.now()] = otpPromiseResolve;
+      
       await service.initialize(isHeadless, broadcastLog, async () => {
-        broadcastLog('🔔 OTP requis - Session non sauvegardée');
-        // Pour l'instant on utilise la session existante
-        return null;
+        broadcastLog('🔔 OTP Required! Please enter the 6-digit code sent to pa****@sdbmail.com');
+        broadcastLog('⏸️ Waiting for OTP input...');
+        
+        // Send event to frontend to show OTP input
+        for (const client of sseClients) {
+          client.write(`event: otp_required\ndata: {"message": "Enter OTP code"}\n\n`);
+        }
+        
+        // Wait for OTP from frontend
+        const otp = await otpPromise;
+        broadcastLog(`📝 OTP received: ${otp}`);
+        return otp;
       });
     } else {
       await service.initialize(isHeadless, broadcastLog);
@@ -169,6 +185,36 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
         broadcastLog(`🎬 Trace available: /api/trace/${filename}?key=${API_KEY}`);
       }
     }
+  }
+});
+
+// Submit OTP endpoint
+app.post('/api/submit-otp', (req, res) => {
+  const { otp } = req.body;
+  const apiKey = req.query.key;
+  
+  if (apiKey !== API_KEY) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  if (!otp || otp.length !== 6) {
+    return res.status(400).json({ error: 'Invalid OTP format' });
+  }
+  
+  // Find and resolve the OTP promise
+  const resolvers = req.app.locals.otpResolvers || {};
+  const resolverKeys = Object.keys(resolvers);
+  
+  if (resolverKeys.length > 0) {
+    // Resolve the most recent OTP request
+    const latestKey = resolverKeys[resolverKeys.length - 1];
+    const resolver = resolvers[latestKey];
+    resolver(otp);
+    delete resolvers[latestKey];
+    
+    res.json({ success: true, message: 'OTP submitted' });
+  } else {
+    res.status(400).json({ error: 'No pending OTP request' });
   }
 });
 

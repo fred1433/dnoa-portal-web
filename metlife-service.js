@@ -211,30 +211,95 @@ class MetLifeService {
       await this.page.waitForLoadState('networkidle');
       await this.page.waitForTimeout(3000);
       
-      // Vérifier si OTP demandé
+      // Check if OTP is required
       if (await this.isOtpRequired()) {
-        onLog('🔔 OTP required!');
+        onLog('🔔 OTP required! Selecting email method...');
         
-        // Sélectionner la méthode email si nécessaire
-        const emailButton = this.page.getByRole('button', { name: /Email.*pa\*\*\*\*@/ });
-        if (await emailButton.isVisible({ timeout: 3000 })) {
-          await emailButton.click();
-        }
-
-        // Demander l'OTP
-        if (onOtpRequest) {
-          const otp = await onOtpRequest();
-          if (!otp) {
-            throw new Error('OTP not provided');
+        try {
+          // Click on email method button (various possible selectors)
+          const emailSelectors = [
+            'button:has-text("Email")',
+            'button:has-text("pa****@sdbmail.com")',
+            '[aria-label*="Email"]',
+            'text=/Email.*pa.*@/'
+          ];
+          
+          let clicked = false;
+          for (const selector of emailSelectors) {
+            try {
+              await this.page.locator(selector).first().click({ timeout: 3000 });
+              onLog('   ✓ Email method selected');
+              clicked = true;
+              break;
+            } catch (e) {
+              // Try next selector
+            }
           }
           
-          // Entrer l'OTP
-          await this.page.locator('#passcode').fill(otp);
-          await this.page.getByRole('button', { name: 'Sign On' }).click();
+          if (!clicked) {
+            onLog('   ⚠️ Could not find email button, continuing anyway...');
+          }
           
-          await this.page.waitForLoadState('networkidle');
-        } else {
-          throw new Error('OTP required but no handler provided');
+          await this.page.waitForTimeout(2000);
+          
+          // Request OTP from handler
+          if (onOtpRequest) {
+            onLog('   ⏳ Waiting for OTP code...');
+            const otp = await onOtpRequest();
+            
+            if (!otp) {
+              throw new Error('OTP not provided');
+            }
+            
+            onLog(`   📝 Entering OTP: ${otp}`);
+            
+            // Try different OTP input selectors
+            const otpSelectors = ['#passcode', '#otp', 'input[type="text"]', 'input[name*="code"]'];
+            let entered = false;
+            
+            for (const selector of otpSelectors) {
+              try {
+                await this.page.locator(selector).fill(otp);
+                onLog(`   ✓ OTP entered in ${selector}`);
+                entered = true;
+                break;
+              } catch (e) {
+                // Try next selector
+              }
+            }
+            
+            if (!entered) {
+              throw new Error('Could not find OTP input field');
+            }
+            
+            // Submit OTP (try different submit buttons)
+            const submitSelectors = [
+              'button:has-text("Sign On")',
+              'button:has-text("Submit")',
+              'button:has-text("Continue")',
+              'button[type="submit"]'
+            ];
+            
+            for (const selector of submitSelectors) {
+              try {
+                await this.page.locator(selector).click({ timeout: 3000 });
+                onLog(`   ✓ OTP submitted`);
+                break;
+              } catch (e) {
+                // Try next selector
+              }
+            }
+            
+            await this.page.waitForLoadState('networkidle');
+            await this.page.waitForTimeout(3000);
+            
+            onLog('   ✅ OTP process completed');
+          } else {
+            throw new Error('OTP required but no handler provided');
+          }
+        } catch (otpError) {
+          onLog(`   ❌ OTP handling error: ${otpError.message}`);
+          throw otpError;
         }
       }
       
@@ -290,7 +355,9 @@ class MetLifeService {
     const pageText = await this.page.textContent('body') || '';
     return pageText.includes('verification') || 
            pageText.includes('passcode') || 
-           pageText.includes('Enter the code');
+           pageText.includes('Enter the code') ||
+           pageText.includes('authentication method') ||
+           pageText.includes('Email 1');
   }
 
   async saveSession() {

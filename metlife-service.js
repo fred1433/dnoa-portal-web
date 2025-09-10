@@ -216,18 +216,26 @@ class MetLifeService {
         onLog('🔔 OTP required! Selecting email method...');
         
         try {
-          // Click on email method button (various possible selectors)
+          // Click on email method button - using robust selectors from CodeGen
           const emailSelectors = [
-            'button:has-text("Email")',
-            'button:has-text("pa****@sdbmail.com")',
-            '[aria-label*="Email"]',
-            'text=/Email.*pa.*@/'
+            // Best selector from CodeGen - most specific
+            { method: 'role', selector: 'button', options: { name: /Email.*pa.*@sdbmail\.com/i } },
+            // Fallback selectors
+            { method: 'text', selector: 'Email 1' },
+            { method: 'text', selector: 'pa****@sdbmail.com' },
+            { method: 'css', selector: '[aria-label*="Email"]' }
           ];
           
           let clicked = false;
-          for (const selector of emailSelectors) {
+          for (const sel of emailSelectors) {
             try {
-              await this.page.locator(selector).first().click({ timeout: 3000 });
+              if (sel.method === 'role') {
+                await this.page.getByRole(sel.selector, sel.options).click({ timeout: 3000 });
+              } else if (sel.method === 'text') {
+                await this.page.getByText(sel.selector).click({ timeout: 3000 });
+              } else {
+                await this.page.locator(sel.selector).click({ timeout: 3000 });
+              }
               onLog('   ✓ Email method selected');
               clicked = true;
               break;
@@ -253,18 +261,24 @@ class MetLifeService {
             
             onLog(`   📝 Entering OTP: ${otp}`);
             
-            // Try different OTP input selectors
-            const otpSelectors = ['#passcode', '#otp', 'input[type="text"]', 'input[name*="code"]'];
+            // Enter OTP - #passcode is the correct selector from CodeGen
             let entered = false;
-            
-            for (const selector of otpSelectors) {
-              try {
-                await this.page.locator(selector).fill(otp);
-                onLog(`   ✓ OTP entered in ${selector}`);
-                entered = true;
-                break;
-              } catch (e) {
-                // Try next selector
+            try {
+              await this.page.locator('#passcode').fill(otp);
+              onLog(`   ✓ OTP entered`);
+              entered = true;
+            } catch (e) {
+              // Fallback selectors if #passcode doesn't work
+              const otpSelectors = ['#otp', 'input[type="text"]', 'input[name*="code"]'];
+              for (const selector of otpSelectors) {
+                try {
+                  await this.page.locator(selector).fill(otp);
+                  onLog(`   ✓ OTP entered via ${selector}`);
+                  entered = true;
+                  break;
+                } catch (e2) {
+                  // Try next selector
+                }
               }
             }
             
@@ -272,21 +286,26 @@ class MetLifeService {
               throw new Error('Could not find OTP input field');
             }
             
-            // Submit OTP (try different submit buttons)
-            const submitSelectors = [
-              'button:has-text("Sign On")',
-              'button:has-text("Submit")',
-              'button:has-text("Continue")',
-              'button[type="submit"]'
-            ];
-            
-            for (const selector of submitSelectors) {
-              try {
-                await this.page.locator(selector).click({ timeout: 3000 });
-                onLog(`   ✓ OTP submitted`);
-                break;
-              } catch (e) {
-                // Try next selector
+            // Submit OTP - Using getByRole for "Sign On" button (from CodeGen)
+            try {
+              await this.page.getByRole('button', { name: 'Sign On' }).click({ timeout: 3000 });
+              onLog(`   ✓ OTP submitted`);
+            } catch (e) {
+              // Fallback to other submit button selectors
+              const submitSelectors = [
+                'button:has-text("Submit")',
+                'button:has-text("Continue")',
+                'button[type="submit"]'
+              ];
+              
+              for (const selector of submitSelectors) {
+                try {
+                  await this.page.locator(selector).click({ timeout: 3000 });
+                  onLog(`   ✓ OTP submitted via ${selector}`);
+                  break;
+                } catch (e2) {
+                  // Try next selector
+                }
               }
             }
             

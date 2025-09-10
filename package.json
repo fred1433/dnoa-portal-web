@@ -1,7 +1,7 @@
 {
-  "name": "dnoa-portal-web",
+  "name": "dental-portal-extractor",
   "version": "1.0.0",
-  "description": "Web interface for DNOA insurance portal scraper",
+  "description": "Web interface for dental portal data extraction (DNOA, DentaQuest, MetLife)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

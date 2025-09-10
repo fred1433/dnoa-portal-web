@@ -1,60 +1,23 @@
-# DNOA Portal Web Interface
+# Dental Portal Extractor
 
-Web interface for extracting patient eligibility and benefits data from DNOA portal.
+Multi-portal dental insurance data extraction service.
 
-## 🚀 Deployment on Render
+## Supported Portals
+- **DNOA** - Delta Dental
+- **DentaQuest** - DentaQuest/Sun Life  
+- **MetLife** - MetLife Dental
 
-### Quick Deploy
+## Production URL
+- Service: https://dental-portal-extractor.onrender.com
+- Health check: https://dental-portal-extractor.onrender.com/health
 
-1. Push this folder to a GitHub repository
-2. Go to [Render Dashboard](https://dashboard.render.com)
-3. Create a new **Web Service**
-4. Connect your GitHub repository
-5. Configure:
-   - **Root Directory**: `portal-web`
-   - **Build Command**: `npm install && npx playwright install chromium`
-   - **Start Command**: `node server.js`
-   - **Environment**: Node
-
-### Environment Variables (Required)
-
-Set these in Render dashboard:
-
-```
-DNOA_USERNAME=payorportalsdbmail
-DNOA_PASSWORD=payoraccess1
-API_KEY=your-secure-key-here
-PORT=10000
-```
-
-### Important Notes
-
-- The service uses persistent browser sessions stored in `.dnoa-session/`
-- First run will require login, subsequent runs use saved session
-- Session persists for 30-90 days typically
-
-## 📊 API Usage
-
-Access the interface at: `https://your-app.onrender.com/?key=your-secure-key-here`
-
-### Test Patient Data
-- First Name: SOPHIE
-- Last Name: ROBINSON
-- Subscriber ID: 825978894
-- Date of Birth: 09/27/2016
-
-## 🔒 Security
-
-- API key required for all requests
-- Credentials stored in environment variables
-- No PHI stored permanently
-
-## 📝 Local Development
-
+## Local Development
 ```bash
 npm install
-npx playwright install chromium
-node server.js
+npm start
+# Access at http://localhost:3000/?key=demo2024
 ```
 
-Access at: http://localhost:3000/?key=demo2024
+## Notes
+- GitHub repo: dnoa-portal-web (legacy name)
+- Render service: dental-portal-extractor (current name)

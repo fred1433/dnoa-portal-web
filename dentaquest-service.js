@@ -29,14 +29,20 @@ class DentaQuestService {
     // EXACT MetLife architecture: browser + newContext
     this.browser = await chromium.launch({
       headless,
-      args: ['--disable-blink-features=AutomationControlled']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',  // Critical for Docker
+        '--disable-gpu',
+        '--disable-blink-features=AutomationControlled'
+      ]
     });
 
     const contextOptions = {
       viewport: { width: 1920, height: 1080 },
       locale: 'en-US',
-      timezoneId: 'America/New_York',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      timezoneId: 'America/New_York'
+      // Removed incomplete userAgent - let Playwright use its default
     };
 
     // Load saved storage state if it exists
@@ -52,27 +58,29 @@ class DentaQuestService {
     onLog('✅ Browser context created');
   }
 
+  async safeGoto(url, onLog = console.log) {
+    for (let i = 0; i < 3; i++) {
+      try {
+        await this.page.goto(url, { waitUntil: 'commit', timeout: 60000 });
+        await this.page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+        return;
+      } catch (e) {
+        if (e.message.includes('ERR_ABORTED') || e.message.includes('ERR_NETWORK')) {
+          onLog(`⚠️ Navigation aborted (${i+1}/3) → retry in 1.5s`);
+          await this.page.waitForTimeout(1500);
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw new Error('Navigation kept aborting after 3 attempts');
+  }
+
   async ensureLoggedIn(onLog = console.log) {
     onLog('🔐 Checking login status...');
     
-    // Check if we're already logged in by going to the main page (with retry)
-    try {
-      await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
-        waitUntil: 'domcontentloaded',
-        timeout: 30000 
-      });
-    } catch (error) {
-      if (error.message.includes('ERR_ABORTED') || error.message.includes('ERR_NETWORK')) {
-        onLog('⚠️ Network error, retrying...');
-        await this.page.waitForTimeout(2000);
-        await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
-          waitUntil: 'domcontentloaded',
-          timeout: 30000 
-        });
-      } else {
-        throw error;
-      }
-    }
+    // Check if we're already logged in by going to the main page
+    await this.safeGoto('https://provideraccess.dentaquest.com/s/', onLog);
     
     // Check if we're on the login page or already in the app
     const currentUrl = this.page.url();
@@ -135,10 +143,7 @@ class DentaQuestService {
       // Navigate to search page only if not already there
       const currentUrl = this.page.url();
       if (!currentUrl.includes('provideraccess.dentaquest.com/s/')) {
-        await this.page.goto('https://provideraccess.dentaquest.com/s/', { 
-          waitUntil: 'domcontentloaded',
-          timeout: 10000 
-        });
+        await this.safeGoto('https://provideraccess.dentaquest.com/s/', onLog);
       }
       
       // Select location and provider

@@ -31,7 +31,7 @@ class MetLifeService {
   }
 
   async initialize(headless = true, onLog = console.log, onOtpRequest = null) {
-    onLog('🚀 Initialisation MetLife...');
+    onLog('🚀 Initializing MetLife...');
     
     const args = [
       '--disable-blink-features=AutomationControlled',
@@ -61,13 +61,13 @@ class MetLifeService {
     // Charger le profil Chrome persistant si existe
     if (fs.existsSync(this.userDataDir)) {
       contextOptions.userDataDir = this.userDataDir;
-      onLog('📁 Profil Chrome chargé');
+      onLog('📁 Chrome profile loaded');
     }
 
     // Charger les cookies de session si existent
     if (fs.existsSync(this.sessionFile)) {
       contextOptions.storageState = this.sessionFile;
-      onLog('🍪 Session précédente chargée');
+      onLog('🍪 Previous session loaded');
     }
 
     this.context = await this.browser.newContext(contextOptions);
@@ -89,37 +89,42 @@ class MetLifeService {
     // Tenter l'authentification
     const isAuthenticated = await this.ensureAuthenticated(onLog, onOtpRequest);
     if (!isAuthenticated) {
-      throw new Error('Échec de l\'authentification MetLife');
+      throw new Error('MetLife authentication failed');
     }
 
     return true;
   }
 
   async ensureAuthenticated(onLog = console.log, onOtpRequest = null) {
-    onLog('🔐 Vérification authentification...');
+    onLog('🔐 Checking authentication...');
     
-    // Naviguer vers la page d'accueil
-    await this.page.goto(this.urls.home, { waitUntil: 'networkidle', timeout: 60000 });
-    await this.page.waitForTimeout(2000);
+    try {
+      // Naviguer vers la page d'accueil
+      await this.page.goto(this.urls.home, { waitUntil: 'networkidle', timeout: 60000 });
+      await this.page.waitForTimeout(2000);
+    } catch (navError) {
+      onLog(`⚠️ Navigation error: ${navError.message}`);
+      // Continue anyway to try login
+    }
     
     const currentUrl = this.page.url();
-    onLog(`   URL actuelle: ${currentUrl}`);
+    onLog(`   Current URL: ${currentUrl.substring(0, 100)}...`);
     
     // Vérifier si déjà connecté
     if (currentUrl.includes('/home') && !this.isLoginPage(currentUrl)) {
-      onLog('✅ Déjà connecté avec la session sauvegardée');
+      onLog('✅ Already logged in with saved session');
       await this.saveSession();
       return true;
     }
 
     // Connexion requise
-    onLog('⚠️ Connexion requise...');
+    onLog('⚠️ Login required...');
     return await this.performLogin(onLog, onOtpRequest);
   }
 
   async performLogin(onLog = console.log, onOtpRequest = null) {
     try {
-      onLog('📝 Saisie des identifiants...');
+      onLog('📝 Entering credentials...');
       
       // Cliquer sur "Sign in" si présent
       const signInButton = this.page.getByRole('button', { name: 'Sign in' });
@@ -138,7 +143,7 @@ class MetLifeService {
       
       // Vérifier si OTP demandé
       if (await this.isOtpRequired()) {
-        onLog('🔔 OTP requis!');
+        onLog('🔔 OTP required!');
         
         // Sélectionner la méthode email si nécessaire
         const emailButton = this.page.getByRole('button', { name: /Email.*pa\*\*\*\*@/ });
@@ -150,7 +155,7 @@ class MetLifeService {
         if (onOtpRequest) {
           const otp = await onOtpRequest();
           if (!otp) {
-            throw new Error('OTP non fourni');
+            throw new Error('OTP not provided');
           }
           
           // Entrer l'OTP
@@ -159,14 +164,14 @@ class MetLifeService {
           
           await this.page.waitForLoadState('networkidle');
         } else {
-          throw new Error('OTP requis mais pas de handler fourni');
+          throw new Error('OTP required but no handler provided');
         }
       }
       
       // Vérifier qu'on est bien connecté
       const finalUrl = this.page.url();
       if (finalUrl.includes('/home')) {
-        onLog('✅ Connexion réussie!');
+        onLog('✅ Login successful!');
         await this.saveSession();
         return true;
       }
@@ -174,7 +179,7 @@ class MetLifeService {
       return false;
       
     } catch (error) {
-      onLog(`❌ Erreur de connexion: ${error.message}`);
+      onLog(`❌ Login error: ${error.message}`);
       return false;
     }
   }
@@ -195,12 +200,12 @@ class MetLifeService {
 
   async saveSession() {
     await this.context.storageState({ path: this.sessionFile });
-    console.log('💾 Session sauvegardée');
+    console.log('💾 Session saved');
   }
 
   async extractPatientData(subscriberId, lastName, dateOfBirth, firstName, onLog = console.log) {
     try {
-      onLog(`\n🔍 Recherche patient: ${firstName} ${lastName} (${subscriberId})`);
+      onLog(`\n🔍 Searching patient: ${firstName} ${lastName} (${subscriberId})`);
       
       // Navigation vers la recherche
       await this.page.waitForTimeout(2000);
@@ -211,7 +216,7 @@ class MetLifeService {
       await this.page.getByRole('button', { name: 'Submit' }).click();
       
       // Attendre le chargement
-      onLog('⏳ Chargement...');
+      onLog('⏳ Loading...');
       await this.page.waitForLoadState('networkidle');
       
       // Attendre que le contenu apparaisse (AVEC firstName passé en argument !)
@@ -227,7 +232,7 @@ class MetLifeService {
           { timeout: 10000 }
         );
       } catch (e) {
-        onLog('⚠️ Timeout en attendant le contenu');
+        onLog('⚠️ Timeout waiting for content');
       }
       
       await this.page.waitForTimeout(2000);
@@ -236,12 +241,12 @@ class MetLifeService {
       const pageText = await this.page.innerText('body').catch(() => '');
       
       if (pageText.includes('Duplicate identification') || pageText.includes('last name')) {
-        onLog('⚠️ Désambiguïsation détectée');
+        onLog('⚠️ Disambiguation detected');
         
         // Saisir le nom de famille
         await this.page.waitForSelector('#lastName', { timeout: 5000 });
         await this.page.locator('#lastName').fill(lastName);
-        onLog(`   Nom saisi: ${lastName}`);
+        onLog(`   Entered last name: ${lastName}`);
         
         // Soumettre
         await this.page.getByRole('link', { name: 'submit' }).click();
@@ -250,7 +255,7 @@ class MetLifeService {
       }
 
       // Sélection du patient (méthode robuste)
-      onLog('👤 Sélection du patient...');
+      onLog('👤 Selecting patient...');
       
       // Attendre que la page soit prête
       await Promise.race([
@@ -262,7 +267,7 @@ class MetLifeService {
       
       try {
         // D'abord, essayer de scroller tous les conteneurs pour déclencher le rendu
-        onLog('📜 Scroll pour déclencher le rendu virtualisé...');
+        onLog('📜 Scrolling to trigger virtualized rendering...');
         await this.page.evaluate(() => {
           // Trouver tous les conteneurs scrollables
           const scrollables = Array.from(document.querySelectorAll('*')).filter(el => {
@@ -298,7 +303,7 @@ class MetLifeService {
         try {
           await patientLink.click({ timeout: 5000 });
         } catch (clickError) {
-          onLog('⚠️ Click standard échoué, tentative JS...');
+          onLog('⚠️ Standard click failed, trying JS click...');
           // Fallback: click via JavaScript
           const handle = await patientLink.elementHandle();
           if (handle) {
@@ -308,7 +313,7 @@ class MetLifeService {
           }
         }
         
-        onLog(`✓ Patient ${firstName} ${lastName} sélectionné`);
+        onLog(`✓ Patient ${firstName} ${lastName} selected`);
         await this.page.waitForLoadState('domcontentloaded');
         
         // Gestion Multiple Providers si nécessaire
@@ -316,13 +321,13 @@ class MetLifeService {
         const currentUrl = this.page.url();
         
         if (currentUrl.includes('MultipleProviders')) {
-          onLog('⚠️ Sélection du provider...');
+          onLog('⚠️ Selecting provider...');
           
           // Sélectionner le premier provider disponible
           const providerLink = this.page.locator('table a').first();
           if (await providerLink.count() > 0) {
             await providerLink.click();
-            onLog('✓ Provider sélectionné');
+            onLog('✓ Provider selected');
           }
           
           await this.page.waitForLoadState('networkidle');
@@ -330,7 +335,7 @@ class MetLifeService {
         }
         
         // Extraction des données d'éligibilité
-        onLog('\n📊 Extraction des données...');
+        onLog('\n📊 Extracting data...');
         
         await this.page.waitForLoadState('networkidle');
         await this.page.waitForTimeout(5000);
@@ -347,7 +352,7 @@ class MetLifeService {
             { timeout: 10000 }
           );
         } catch (e) {
-          onLog('⚠️ Timeout données éligibilité');
+          onLog('⚠️ Timeout waiting for eligibility data');
         }
         
         // Extraire les données
@@ -403,10 +408,10 @@ class MetLifeService {
           eligibilityData.basicPlan.maximumRemaining = '$' + (max - used).toLocaleString();
         }
         
-        onLog('✓ Données d\'éligibilité extraites');
+        onLog('✓ Eligibility data extracted');
         
         // Récupération des claims
-        onLog('\n📋 Récupération des claims...');
+        onLog('\n📋 Retrieving claims...');
         let claimsData = [];
         
         try {
@@ -541,10 +546,10 @@ class MetLifeService {
         };
         
       } catch (error) {
-        onLog(`❌ Patient non trouvé: ${error.message}`);
+        onLog(`❌ Patient not found: ${error.message}`);
         return {
           success: false,
-          error: `Patient non trouvé ou erreur d'extraction: ${error.message}`
+          error: `Patient not found or extraction error: ${error.message}`
         };
       }
       

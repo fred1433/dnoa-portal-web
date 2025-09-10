@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const DNOAService = require('./dnoa-service');
 const DentaQuestService = require('./dentaquest-service');
+const MetLifeService = require('./metlife-service');
 require('dotenv').config();
 
 const app = express();
@@ -85,16 +86,44 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
   let service;
   if (portal === 'DentaQuest') {
     service = new DentaQuestService();
+  } else if (portal === 'MetLife') {
+    service = new MetLifeService();
   } else {
     service = new DNOAService();
   }
   
   try {
     // Initialize with headless mode
-    await service.initialize(true, broadcastLog);
+    const isHeadless = true; // Testons en headless pour tous
+    
+    if (portal === 'MetLife') {
+      // MetLife needs OTP handler
+      await service.initialize(isHeadless, broadcastLog, async () => {
+        broadcastLog('🔔 OTP requis - Session non sauvegardée');
+        // Pour l'instant on utilise la session existante
+        return null;
+      });
+    } else {
+      await service.initialize(isHeadless, broadcastLog);
+    }
     
     // Extract data
-    const data = await service.extractPatientData(patient, broadcastLog);
+    let data;
+    if (portal === 'MetLife') {
+      const result = await service.extractPatientData(
+        patient.subscriberId,
+        patient.lastName,
+        patient.dateOfBirth,
+        patient.firstName,
+        broadcastLog
+      );
+      data = result.success ? result.data : null;
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+    } else {
+      data = await service.extractPatientData(patient, broadcastLog);
+    }
     
     // Send complete event to SSE clients
     for (const client of sseClients) {

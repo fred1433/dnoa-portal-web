@@ -136,7 +136,14 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     });
     
   } catch (error) {
+    console.error('Full error details:', error);
     broadcastLog('❌ Error: ' + error.message);
+    
+    // Add more context for MetLife errors
+    if (portal === 'MetLife' && error.message.includes('authentication')) {
+      broadcastLog('⚠️ MetLife authentication issues in production are known - session cookies are not portable between environments');
+      broadcastLog('💡 Solution: Need to implement direct authentication on production server');
+    }
     
     // Send error event to SSE clients
     for (const client of sseClients) {
@@ -145,7 +152,9 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      portal: portal,
+      details: process.env.NODE_ENV === 'production' ? undefined : error.stack
     });
     
   } finally {

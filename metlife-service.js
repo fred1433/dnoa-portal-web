@@ -99,43 +99,96 @@ class MetLifeService {
     onLog('🔐 Checking authentication...');
     
     try {
-      // Naviguer vers la page d'accueil
+      // Log session file status
+      if (fs.existsSync(this.sessionFile)) {
+        const stats = fs.statSync(this.sessionFile);
+        onLog(`   Session file exists (${stats.size} bytes, modified: ${stats.mtime.toISOString()})`);
+      } else {
+        onLog('   No session file found');
+      }
+      
+      // Navigate to home page
+      onLog(`   Navigating to: ${this.urls.home}`);
       await this.page.goto(this.urls.home, { waitUntil: 'networkidle', timeout: 60000 });
       await this.page.waitForTimeout(2000);
     } catch (navError) {
       onLog(`⚠️ Navigation error: ${navError.message}`);
+      onLog(`   Error stack: ${navError.stack}`);
       // Continue anyway to try login
     }
     
     const currentUrl = this.page.url();
-    onLog(`   Current URL: ${currentUrl.substring(0, 100)}...`);
+    onLog(`   Current URL: ${currentUrl}`);
     
-    // Vérifier si déjà connecté
+    // Log page title for debugging
+    const pageTitle = await this.page.title().catch(() => 'N/A');
+    onLog(`   Page title: ${pageTitle}`);
+    
+    // Check if already logged in
     if (currentUrl.includes('/home') && !this.isLoginPage(currentUrl)) {
       onLog('✅ Already logged in with saved session');
       await this.saveSession();
       return true;
     }
 
-    // Connexion requise
+    // Login required
     onLog('⚠️ Login required...');
+    onLog(`   Redirected to: ${currentUrl}`);
     return await this.performLogin(onLog, onOtpRequest);
   }
 
   async performLogin(onLog = console.log, onOtpRequest = null) {
     try {
-      onLog('📝 Entering credentials...');
+      onLog('📝 Starting login process...');
       
-      // Cliquer sur "Sign in" si présent
-      const signInButton = this.page.getByRole('button', { name: 'Sign in' });
-      if (await signInButton.isVisible({ timeout: 3000 })) {
-        await signInButton.click();
+      // Log current page content for debugging
+      const pageText = await this.page.innerText('body').catch(() => '');
+      if (pageText.length < 100) {
+        onLog(`   ⚠️ Page seems empty or not loaded properly (${pageText.length} chars)`);
+      }
+      
+      // Check for "Sign in" button
+      try {
+        const signInButton = this.page.getByRole('button', { name: 'Sign in' });
+        if (await signInButton.isVisible({ timeout: 3000 })) {
+          await signInButton.click();
+          onLog('   Clicked Sign in button');
+          await this.page.waitForLoadState('networkidle');
+        }
+      } catch (e) {
+        onLog('   Sign in button not found, continuing...');
       }
 
-      // Entrer les credentials
-      await this.page.getByRole('textbox', { name: 'username' }).fill(this.credentials.username);
-      await this.page.getByRole('textbox', { name: 'password' }).fill(this.credentials.password);
-      await this.page.getByRole('button', { name: 'Log in' }).click();
+      // Enter credentials
+      try {
+        onLog('   Looking for login form...');
+        await this.page.getByRole('textbox', { name: 'username' }).fill(this.credentials.username);
+        await this.page.getByRole('textbox', { name: 'password' }).fill(this.credentials.password);
+        await this.page.getByRole('button', { name: 'Log in' }).click();
+        onLog('   Credentials submitted via primary method');
+      } catch (e) {
+        onLog(`   ⚠️ Primary login method failed: ${e.message}`);
+        // Try alternative selectors
+        try {
+          onLog('   Trying alternative selectors...');
+          const usernameField = await this.page.locator('#username').isVisible();
+          const passwordField = await this.page.locator('#password').isVisible();
+          onLog(`   Username field visible: ${usernameField}, Password field visible: ${passwordField}`);
+          
+          await this.page.locator('#username').fill(this.credentials.username);
+          await this.page.locator('#password').fill(this.credentials.password);
+          await this.page.locator('button[type="submit"]').click();
+          onLog('   Credentials submitted via alternative method');
+        } catch (e2) {
+          // Log page HTML for debugging
+          const pageHtml = await this.page.content();
+          onLog(`   Current page HTML length: ${pageHtml.length} chars`);
+          if (pageHtml.includes('maintenance')) {
+            throw new Error('MetLife portal is under maintenance');
+          }
+          throw new Error(`Login form not found: ${e2.message}`);
+        }
+      }
       
       // Attendre la navigation
       await this.page.waitForLoadState('networkidle');
@@ -168,18 +221,43 @@ class MetLifeService {
         }
       }
       
-      // Vérifier qu'on est bien connecté
+      // Check if successfully logged in
       const finalUrl = this.page.url();
+      onLog(`   Final URL after login: ${finalUrl}`);
+      
       if (finalUrl.includes('/home')) {
         onLog('✅ Login successful!');
         await this.saveSession();
         return true;
+      } else {
+        // Log why login might have failed
+        const pageContent = await this.page.innerText('body').catch(() => '');
+        if (pageContent.includes('invalid') || pageContent.includes('incorrect')) {
+          onLog('   ❌ Invalid credentials');
+        } else if (pageContent.includes('locked') || pageContent.includes('blocked')) {
+          onLog('   ❌ Account may be locked');
+        } else {
+          onLog(`   ❌ Login failed - unexpected page state`);
+        }
       }
       
       return false;
       
     } catch (error) {
       onLog(`❌ Login error: ${error.message}`);
+      onLog(`   Error stack: ${error.stack}`);
+      
+      // Take screenshot for debugging (in production)
+      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+        try {
+          const screenshotPath = path.join(__dirname, 'login-error.png');
+          await this.page.screenshot({ path: screenshotPath, fullPage: true });
+          onLog(`   Screenshot saved to: ${screenshotPath}`);
+        } catch (screenshotError) {
+          onLog(`   Could not save screenshot: ${screenshotError.message}`);
+        }
+      }
+      
       return false;
     }
   }
@@ -199,8 +277,13 @@ class MetLifeService {
   }
 
   async saveSession() {
-    await this.context.storageState({ path: this.sessionFile });
-    console.log('💾 Session saved');
+    try {
+      await this.context.storageState({ path: this.sessionFile });
+      const stats = fs.statSync(this.sessionFile);
+      console.log(`💾 Session saved (${stats.size} bytes)`);
+    } catch (error) {
+      console.log(`❌ Failed to save session: ${error.message}`);
+    }
   }
 
   async extractPatientData(subscriberId, lastName, dateOfBirth, firstName, onLog = console.log) {

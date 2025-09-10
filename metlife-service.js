@@ -104,9 +104,9 @@ class MetLifeService {
     }
 
     // Tenter l'authentification
-    const isAuthenticated = await this.ensureAuthenticated(onLog, onOtpRequest);
-    if (!isAuthenticated) {
-      throw new Error('MetLife authentication failed');
+    const authResult = await this.ensureAuthenticated(onLog, onOtpRequest);
+    if (!authResult.success) {
+      throw new Error(`MetLife authentication failed: ${authResult.error || 'Unknown error'}`);
     }
 
     return true;
@@ -145,7 +145,7 @@ class MetLifeService {
     if (currentUrl.includes('/home') && !this.isLoginPage(currentUrl)) {
       onLog('✅ Already logged in with saved session');
       await this.saveSession();
-      return true;
+      return { success: true };
     }
 
     // Login required
@@ -310,7 +310,7 @@ class MetLifeService {
       if (finalUrl.includes('/home')) {
         onLog('✅ Login successful!');
         await this.saveSession();
-        return true;
+        return { success: true };
       } else {
         // Log why login might have failed
         const pageContent = await this.page.innerText('body').catch(() => '');
@@ -323,7 +323,7 @@ class MetLifeService {
         }
       }
       
-      return false;
+      return { success: false, error: 'Login failed' };
       
     } catch (error) {
       onLog(`❌ Login error: ${error.message}`);
@@ -340,7 +340,7 @@ class MetLifeService {
         }
       }
       
-      return false;
+      return { success: false, error: error.message };
     }
   }
 
@@ -396,7 +396,7 @@ class MetLifeService {
                    text.toUpperCase().includes(name.toUpperCase());
           },
           firstName, // IMPORTANT: passer firstName comme argument !
-          { timeout: 10000 }
+          { timeout: 30000 } // Increased timeout for slow loading
         );
       } catch (e) {
         onLog('⚠️ Timeout waiting for content');
@@ -461,7 +461,7 @@ class MetLifeService {
         const patientLink = this.page.getByRole('link', { name: nameRegex }).first();
         
         // Attendre que l'élément soit attaché (pas forcément visible)
-        await patientLink.waitFor({ state: 'attached', timeout: 10000 });
+        await patientLink.waitFor({ state: 'attached', timeout: 30000 });
         
         // Scroller si nécessaire
         await patientLink.scrollIntoViewIfNeeded().catch(() => {});

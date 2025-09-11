@@ -4,6 +4,8 @@ const DNOAService = require('./dnoa-service');
 const DentaQuestService = require('./dentaquest-service');
 const fs = require('fs');
 const MetLifeService = require('./metlife-service');
+const monitor = require('./monitor');
+const cron = require('node-cron');
 require('dotenv').config();
 
 const app = express();
@@ -285,6 +287,42 @@ app.get('/api/traces', (req, res) => {
   res.json({ traces: traceFiles });
 });
 
+// Monitoring endpoints
+app.get('/api/monitor/status', checkApiKey, async (req, res) => {
+  try {
+    const status = await monitor.getLatestStatus();
+    res.json({ status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/monitor/history', checkApiKey, async (req, res) => {
+  try {
+    const hours = parseInt(req.query.hours) || 24;
+    const history = await monitor.getHistory(hours);
+    res.json({ history });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to trigger manual test
+app.post('/api/monitor/test', checkApiKey, async (req, res) => {
+  try {
+    console.log('📋 Manual monitoring test triggered');
+    const results = await monitor.runAllTests();
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Serve monitoring page
+app.get('/monitor', checkApiKey, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'monitor.html'));
+});
+
 // Serve the main page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -295,4 +333,17 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📝 API Key: ${API_KEY}`);
   console.log(`🔗 Access URL: http://localhost:${PORT}/?key=${API_KEY}`);
+  console.log(`📊 Monitor URL: http://localhost:${PORT}/monitor?key=${API_KEY}`);
+  
+  // Schedule monitoring every hour (at minute 0)
+  cron.schedule('0 * * * *', async () => {
+    console.log('\n⏰ Scheduled monitoring run started');
+    try {
+      await monitor.runAllTests();
+    } catch (error) {
+      console.error('❌ Scheduled monitoring failed:', error.message);
+    }
+  });
+  
+  console.log('⏰ Monitoring scheduled to run every hour');
 });

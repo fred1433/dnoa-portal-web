@@ -225,23 +225,38 @@ async function runAllTests() {
   console.log('\n' + '='.repeat(50));
   console.log(`🏥 MONITORING RUN - ${new Date().toLocaleString()}`);
   console.log('='.repeat(50));
+  console.log('🚀 Running all tests in PARALLEL...');
   
-  const results = [];
+  // Exécuter tous les tests en parallèle
+  const [dnoaResult, dqResult, mlResult] = await Promise.all([
+    testDNOA().catch(error => ({
+      portal: 'DNOA',
+      status: 'down',
+      duration_ms: 0,
+      error_message: error.message
+    })),
+    testDentaQuest().catch(error => ({
+      portal: 'DentaQuest',
+      status: 'down',
+      duration_ms: 0,
+      error_message: error.message
+    })),
+    testMetLife().catch(error => ({
+      portal: 'MetLife',
+      status: 'down',
+      duration_ms: 0,
+      error_message: error.message
+    }))
+  ]);
   
-  // Test DNOA
-  const dnoaResult = await testDNOA();
-  await saveResult(dnoaResult);
-  results.push(dnoaResult);
+  // Sauvegarder tous les résultats en parallèle
+  await Promise.all([
+    saveResult(dnoaResult),
+    saveResult(dqResult),
+    saveResult(mlResult)
+  ]);
   
-  // Test DentaQuest
-  const dqResult = await testDentaQuest();
-  await saveResult(dqResult);
-  results.push(dqResult);
-  
-  // Test MetLife
-  const mlResult = await testMetLife();
-  await saveResult(mlResult);
-  results.push(mlResult);
+  const results = [dnoaResult, dqResult, mlResult];
   
   // Résumé
   console.log('\n📊 SUMMARY:');

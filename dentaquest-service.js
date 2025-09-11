@@ -148,8 +148,8 @@ class DentaQuestService {
       
       // Select location and provider
       onLog('📍 Setting location and provider...');
-      await this.page.getByLabel('Service Location*').selectOption(this.locationId);
-      await this.page.getByLabel('Provider*').selectOption(this.providerId);
+      await this.page.getByLabel('Service Location*').selectOption(this.locationId, { timeout: 60000 });
+      await this.page.getByLabel('Provider*').selectOption(this.providerId, { timeout: 60000 });
       await this.page.waitForTimeout(2000);
       
       // Fill search form

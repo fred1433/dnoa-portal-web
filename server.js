@@ -144,10 +144,28 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
         patient.firstName,
         broadcastLog
       );
-      data = result.success ? result.data : null;
       if (!result.success) {
         throw new Error(result.error);
       }
+      
+      // Transform MetLife data to match expected format
+      const metlifeData = result.data;
+      data = {
+        summary: {
+          patientName: `${metlifeData.patient.firstName} ${metlifeData.patient.lastName}`,
+          memberId: metlifeData.patient.subscriberId,
+          planMaximum: metlifeData.eligibility?.basicPlan?.planMaximum || 'N/A',
+          maximumUsed: metlifeData.eligibility?.basicPlan?.maximumUsed || '$0',
+          maximumRemaining: metlifeData.eligibility?.basicPlan?.maximumRemaining || 'N/A',
+          deductible: metlifeData.eligibility?.basicPlan?.deductible || '$0',
+          deductibleMet: metlifeData.eligibility?.basicPlan?.deductibleMet || '$0',
+          network: metlifeData.eligibility?.patientInfo?.network || 'In-Network'
+        },
+        claims: metlifeData.claims || [],
+        eligibility: metlifeData.eligibility,
+        patient: metlifeData.patient,
+        timestamp: metlifeData.timestamp
+      };
     } else {
       data = await service.extractPatientData(patient, broadcastLog);
     }

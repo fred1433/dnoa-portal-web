@@ -148,8 +148,42 @@ class DentaQuestService {
       
       // Select location and provider
       onLog('📍 Setting location and provider...');
-      await this.page.getByLabel('Service Location*').selectOption(this.locationId, { timeout: 60000 });
-      await this.page.getByLabel('Provider*').selectOption(this.providerId, { timeout: 60000 });
+      
+      // Debug: Log current URL and page content
+      const debugUrl = this.page.url();
+      onLog(`   Current URL: ${debugUrl}`);
+      
+      try {
+        // Check if we're on the right page
+        const pageTitle = await this.page.title();
+        onLog(`   Page title: ${pageTitle}`);
+        
+        // Try to find the selector
+        const locationSelector = await this.page.getByLabel('Service Location*').count();
+        onLog(`   Location selector found: ${locationSelector > 0 ? 'YES' : 'NO'}`);
+        
+        if (locationSelector === 0) {
+          // Take screenshot for debugging
+          if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+            const screenshotPath = `/tmp/dentaquest-error-${Date.now()}.png`;
+            await this.page.screenshot({ path: screenshotPath, fullPage: true });
+            onLog(`   📸 Screenshot saved: ${screenshotPath}`);
+          }
+          
+          // Check if we're on login page
+          const loginForm = await this.page.locator('#loginForm, .login-form, [name="login"]').count();
+          if (loginForm > 0) {
+            throw new Error('Session expired - login page detected');
+          }
+        }
+        
+        await this.page.getByLabel('Service Location*').selectOption(this.locationId, { timeout: 60000 });
+        await this.page.getByLabel('Provider*').selectOption(this.providerId, { timeout: 60000 });
+      } catch (error) {
+        onLog(`   ❌ Location selector error: ${error.message}`);
+        throw error;
+      }
+      
       await this.page.waitForTimeout(2000);
       
       // Fill search form

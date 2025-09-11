@@ -348,6 +348,22 @@ function getHistory(hours = 24) {
 
 // Si lancé directement, faire un test immédiat
 if (require.main === module) {
+  // SÉCURITÉ: Empêcher l'exécution locale pour protéger les sessions de prod
+  if (!process.env.RENDER && !process.env.ALLOW_LOCAL_MONITOR) {
+    console.error('❌ ERREUR DE SÉCURITÉ: Ne pas exécuter monitor.js localement !');
+    console.error('');
+    console.error('⚠️  L\'exécution locale peut invalider les sessions de production.');
+    console.error('');
+    console.error('Utilisez plutôt :');
+    console.error('  • Interface web : https://dental-portal-extractor.onrender.com/monitor?key=demo2024secure');
+    console.error('  • API : curl "https://dental-portal-extractor.onrender.com/api/monitor/test?key=demo2024secure"');
+    console.error('');
+    console.error('Pour forcer l\'exécution locale (DANGEREUX) :');
+    console.error('  ALLOW_LOCAL_MONITOR=true node monitor.js');
+    console.error('');
+    process.exit(1);
+  }
+  
   console.log('🚀 Running immediate test...');
   runAllTests().then(() => {
     console.log('✅ Test complete');

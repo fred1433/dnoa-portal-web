@@ -126,7 +126,7 @@ class MetLifeService {
       
       // Navigate to home page
       onLog(`   Navigating to: ${this.urls.home}`);
-      await this.page.goto(this.urls.home, { waitUntil: 'networkidle', timeout: 60000 });
+      await this.page.goto(this.urls.home, { waitUntil: 'networkidle', timeout: 300000 });
       await this.page.waitForTimeout(2000);
     } catch (navError) {
       onLog(`⚠️ Navigation error: ${navError.message}`);

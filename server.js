@@ -318,8 +318,8 @@ app.post('/api/monitor/test', checkApiKey, async (req, res) => {
   }
 });
 
-// Serve monitoring page
-app.get('/monitor', checkApiKey, (req, res) => {
+// Serve monitoring page (no API key check for HTML page itself)
+app.get('/monitor', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'monitor.html'));
 });
 

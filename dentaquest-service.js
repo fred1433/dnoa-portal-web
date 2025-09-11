@@ -61,8 +61,8 @@ class DentaQuestService {
   async safeGoto(url, onLog = console.log) {
     for (let i = 0; i < 3; i++) {
       try {
-        await this.page.goto(url, { waitUntil: 'commit', timeout: 60000 });
-        await this.page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+        await this.page.goto(url, { waitUntil: 'commit', timeout: 300000 });
+        await this.page.waitForLoadState('domcontentloaded', { timeout: 300000 });
         return;
       } catch (e) {
         if (e.message.includes('ERR_ABORTED') || e.message.includes('ERR_NETWORK')) {
@@ -185,7 +185,7 @@ class DentaQuestService {
       }).click();
       const patientPage = await patientLinkPromise;
       
-      await patientPage.waitForLoadState('networkidle');
+      await patientPage.waitForLoadState('networkidle', { timeout: 300000 });
       
       // 1. Extract Overview
       onLog('📄 Extracting overview...');
@@ -248,7 +248,7 @@ class DentaQuestService {
                 await claimLink.click();
                 const claimDetailPage = await claimDetailPromise;
                 
-                await claimDetailPage.waitForLoadState('networkidle');
+                await claimDetailPage.waitForLoadState('networkidle', { timeout: 300000 });
                 
                 const claimDetail = await this.extractClaimDetails(claimDetailPage);
                 allData.claimsDetails.push({

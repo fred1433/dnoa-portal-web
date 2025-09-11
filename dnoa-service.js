@@ -59,7 +59,7 @@ class DNOAService {
     
     await this.page.goto('https://www.dnoaconnect.com/#!/', { 
       waitUntil: 'networkidle',
-      timeout: 60000 
+      timeout: 300000 
     });
     
     await this.page.waitForTimeout(3000);

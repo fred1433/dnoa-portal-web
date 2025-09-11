@@ -233,6 +233,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Location check endpoint
+app.get('/api/location', async (req, res) => {
+  const location = await checkLocation();
+  res.json(location);
+});
+
 // Download trace files
 app.get('/api/trace/:filename', (req, res) => {
   const { filename } = req.params;

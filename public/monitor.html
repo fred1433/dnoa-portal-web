@@ -242,6 +242,12 @@
             <h1>🏥 Portal Monitoring Dashboard</h1>
             <p>Real-time status monitoring for dental insurance portals</p>
             <div class="last-update" id="lastUpdate">Last update: Never</div>
+            
+            <!-- VPN Warning Banner -->
+            <div id="vpnWarning" style="display: none; background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 12px; margin-top: 15px; border-radius: 8px; font-size: 14px;">
+                ⚠️ <strong>VPN Required:</strong> You are not connected from the US. 
+                Dental portals may block or timeout. Please connect to a US VPN for reliable access.
+            </div>
             <div class="controls">
                 <button class="btn btn-primary" onclick="runManualTest()">
                     Run Test Now
@@ -290,10 +296,27 @@
         
         let autoRefreshInterval;
 
+        // Check VPN location
+        async function checkVPNLocation() {
+            try {
+                const response = await fetch('/api/location');
+                const data = await response.json();
+                
+                if (data && data.isUS === false) {
+                    document.getElementById('vpnWarning').style.display = 'block';
+                } else if (data && data.isUS === true) {
+                    document.getElementById('vpnWarning').style.display = 'none';
+                }
+            } catch (error) {
+                // Silently fail if location check doesn't work
+            }
+        }
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             refreshStatus();
             refreshHistory();
+            checkVPNLocation();
             
             // Auto-refresh setup
             const autoRefreshCheckbox = document.getElementById('autoRefresh');

@@ -447,17 +447,20 @@
         
         // Check VPN location
         async function checkVPNLocation() {
-            try {
-                const response = await fetch('/api/location');
-                const data = await response.json();
-                
-                if (data && data.isUS === false) {
-                    document.getElementById('vpnWarning').style.display = 'block';
-                } else if (data && data.isUS === true) {
-                    document.getElementById('vpnWarning').style.display = 'none';
+            // Only check location if running locally (not on Render)
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                try {
+                    const response = await fetch('/api/location');
+                    const data = await response.json();
+                    
+                    if (data && data.isUS === false) {
+                        document.getElementById('vpnWarning').style.display = 'block';
+                    } else if (data && data.isUS === true) {
+                        document.getElementById('vpnWarning').style.display = 'none';
+                    }
+                } catch (error) {
+                    // Silently fail if location check doesn't work
                 }
-            } catch (error) {
-                // Silently fail if location check doesn't work
             }
         }
         

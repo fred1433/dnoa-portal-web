@@ -6,6 +6,7 @@ const fs = require('fs');
 const MetLifeService = require('./metlife-service');
 const monitor = require('./monitor');
 const cron = require('node-cron');
+const checkLocation = require('./check-location');
 require('dotenv').config();
 
 const app = express();
@@ -329,11 +330,14 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📝 API Key: ${API_KEY}`);
   console.log(`🔗 Access URL: http://localhost:${PORT}/?key=${API_KEY}`);
   console.log(`📊 Monitor URL: http://localhost:${PORT}/monitor?key=${API_KEY}`);
+  
+  // Check location for VPN warning
+  await checkLocation();
   
   // Schedule monitoring every hour (at minute 0)
   cron.schedule('0 * * * *', async () => {

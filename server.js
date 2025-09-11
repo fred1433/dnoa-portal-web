@@ -105,7 +105,7 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
   
   try {
     // Initialize with headless mode
-    const isHeadless = true; // Testons en headless pour tous
+    const isHeadless = true; // Headless pour production
     
     if (portalLower === 'metlife') {
       // MetLife needs OTP handler

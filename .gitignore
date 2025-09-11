@@ -7,3 +7,5 @@ node_modules/
 *.zip
 test-*.js
 .DS_Store
+monitoring.db
+*.db

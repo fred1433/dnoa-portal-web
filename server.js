@@ -363,8 +363,8 @@ app.listen(PORT, async () => {
   // Check location for VPN warning
   await checkLocation();
   
-  // Schedule monitoring every hour (at minute 0)
-  cron.schedule('0 * * * *', async () => {
+  // Schedule monitoring every 6 hours (at 0:00, 6:00, 12:00, 18:00)
+  cron.schedule('0 */6 * * *', async () => {
     console.log('\n⏰ Scheduled monitoring run started');
     try {
       await monitor.runAllTests();
@@ -373,7 +373,7 @@ app.listen(PORT, async () => {
     }
   });
   
-  console.log('⏰ Monitoring scheduled to run every hour');
+  console.log('⏰ Monitoring scheduled to run every 6 hours (00:00, 06:00, 12:00, 18:00)');
   
   // Run initial test on startup after a short delay
   setTimeout(async () => {

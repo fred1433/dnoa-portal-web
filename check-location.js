@@ -1,23 +1,31 @@
 const https = require('https');
+const http = require('http');
 
 async function checkLocation() {
   return new Promise((resolve) => {
     // Try multiple APIs in case one fails
     const apis = [
       'https://ipapi.co/json/',
-      'https://ip-api.com/json/',
+      'http://ip-api.com/json/',  // This one needs HTTP not HTTPS
       'https://ipinfo.io/json'
     ];
     
     let attempted = 0;
     
     function tryApi(url) {
-      https.get(url, (res) => {
+      const client = url.startsWith('https') ? https : http;
+      client.get(url, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
           try {
             const info = JSON.parse(data);
+            
+            // Check if API returned an error
+            if (info.error || info.reason === 'RateLimited') {
+              throw new Error('API error, trying next');
+            }
+            
             // Different APIs use different field names
             const country = info.country_code || info.countryCode || info.country;
             const isUS = country === 'US';

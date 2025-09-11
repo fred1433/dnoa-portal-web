@@ -346,4 +346,15 @@ app.listen(PORT, () => {
   });
   
   console.log('⏰ Monitoring scheduled to run every hour');
+  
+  // Run initial test on startup after a short delay
+  setTimeout(async () => {
+    console.log('\n🚀 Running initial monitoring test on startup...');
+    try {
+      await monitor.runAllTests();
+      console.log('✅ Initial monitoring test completed');
+    } catch (error) {
+      console.error('❌ Initial monitoring test failed:', error.message);
+    }
+  }, 5000); // Wait 5 seconds for server to be fully ready
 });

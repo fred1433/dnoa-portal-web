@@ -1,0 +1,236 @@
+{
+  "patient": {
+    "memberId": "U47997411",
+    "name": "Noah Wilson",
+    "dateOfBirth": "04/11/2018",
+    "relationShipCode": "CH",
+    "memberIdentifier": null,
+    "hasBehavioral": null,
+    "patientId": "U47997411"
+  },
+  "claims": [
+    {
+      "claimReferenceNumber": "E252036006700",
+      "claimCompositeKey": "lw3oZbs4dwlZLB%2FGG%2FPLGVZLO%2FGO%2FPLPKZLO%2FGO%2FPLPKZZ7oZZ03deZ2Z5BOQQOBGGZOGKVGLOOPGGQBSG",
+      "compositeClaimId": "DNTCE25203600670001001",
+      "tinNumbers": [
+        "821594771"
+      ]
+    }
+  ],
+  "claimDetails": [
+    {
+      "memberObject": {
+        "memberId": "U47997411",
+        "memberFirstName": "Noah",
+        "memberLastName": "Wilson",
+        "memberDateOfBirth": "04/11/2018",
+        "relationShipCode": "CH",
+        "memberIdentifier": null,
+        "hasBehavioral": null,
+        "patientId": "U47997411",
+        "__typename": "ClaimDetailMember"
+      },
+      "claimInfoObject": {
+        "claimReferenceNumber": "E252036006700",
+        "claimTotChargeAmount": "$679.00",
+        "claimTotPaidAmount": "$169.00",
+        "claimDateOfService": "07/17/2025-07/17/2025",
+        "serviceProvider": "Chou, Jennifer",
+        "claimStatusDesc": "Processed",
+        "claimProcessedDate": "07/23/2025",
+        "claimReceivedDate": "07/22/2025",
+        "networkPPOIndicator": "In-Network",
+        "patientResponsibility": "$0.00",
+        "additionalRemarks": "THANK YOU FOR USING A CIGNA DENTAL HEALTHCARE PROFESSIONAL. THE AMOUNT ELIGIBLE FOR COVERAGE IS DETERMINED BY THE CIGNA DENTAL NEGOTIATED AMOUNT AND THE CUSTOMER'S BENEFIT PLAN. THE DIFFERENCE BETWEEN THE SUBMITTED CHARGES AND THE NEGOTIATED AMOUNT IS NOT THE PATIENT'S RESPONSIBILITY.",
+        "serviceLineInfoArray": [
+          {
+            "id": "2314953042",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D0150 - Comprehensive Oral Exam",
+            "procedureCode": "D0150",
+            "toothNumber": "--",
+            "amountCharged": "$165.00",
+            "svcLineContractedAmount": "$45.00",
+            "svcLinePaidAmount": "$45.00",
+            "placeOfService": null,
+            "allowedAmount": "$45.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$45.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          },
+          {
+            "id": "2314953043",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D0272 - 2 Bitewing X-Rays",
+            "procedureCode": "D0272",
+            "toothNumber": "--",
+            "amountCharged": "$85.00",
+            "svcLineContractedAmount": "$26.00",
+            "svcLinePaidAmount": "$26.00",
+            "placeOfService": null,
+            "allowedAmount": "$26.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$26.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          },
+          {
+            "id": "2314953044",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D1120 - Child Cleaning",
+            "procedureCode": "D1120",
+            "toothNumber": "--",
+            "amountCharged": "$135.00",
+            "svcLineContractedAmount": "$41.00",
+            "svcLinePaidAmount": "$41.00",
+            "placeOfService": null,
+            "allowedAmount": "$41.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$41.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          },
+          {
+            "id": "2314953045",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D1206 - Fluoride Varnish",
+            "procedureCode": "D1206",
+            "toothNumber": "--",
+            "amountCharged": "$82.00",
+            "svcLineContractedAmount": "$22.00",
+            "svcLinePaidAmount": "$22.00",
+            "placeOfService": null,
+            "allowedAmount": "$22.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$22.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          },
+          {
+            "id": "2314953046",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D0230 - Additional Root X-ray",
+            "procedureCode": "D0230",
+            "toothNumber": "--",
+            "amountCharged": "$76.00",
+            "svcLineContractedAmount": "$9.00",
+            "svcLinePaidAmount": "$9.00",
+            "placeOfService": null,
+            "allowedAmount": "$9.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$9.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          },
+          {
+            "id": "2314953047",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D0220 - Root Xray",
+            "procedureCode": "D0220",
+            "toothNumber": "--",
+            "amountCharged": "$60.00",
+            "svcLineContractedAmount": "$17.00",
+            "svcLinePaidAmount": "$17.00",
+            "placeOfService": null,
+            "allowedAmount": "$17.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$17.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          },
+          {
+            "id": "2314953048",
+            "dateOfService": "07/17/2025-07/17/2025",
+            "cdtCode": "D0230 - Additional Root X-ray",
+            "procedureCode": "D0230",
+            "toothNumber": "--",
+            "amountCharged": "$76.00",
+            "svcLineContractedAmount": "$9.00",
+            "svcLinePaidAmount": "$9.00",
+            "placeOfService": null,
+            "allowedAmount": "$9.00",
+            "deductible": "$0.00",
+            "coveredBalance": "$9.00",
+            "memberResponsibility": "$0.00",
+            "patientCoinsuranceResponsibility": "$0.00",
+            "copay": "",
+            "remarkCode": "ME",
+            "propRemarkDescription": "",
+            "__typename": "ClaimServiceLineInfo"
+          }
+        ],
+        "serviceLineTotalsObject": {
+          "amountChargedTotal": "$679.00",
+          "allowedAmountTotal": "$169.00",
+          "amountNotCoveredTotal": "$510.00",
+          "deductibleTotal": "$0.00",
+          "coveredBalTotal": "$169.00",
+          "contractedAmountTotal": "$169.00",
+          "planCoinsurancePaidTotal": "$169.00",
+          "coPayTotal": "",
+          "memberCoInsuTotal": "$0.00",
+          "memberResponseTotal": "$0.00",
+          "__typename": "ServiceLineTotal"
+        },
+        "explanationOfRemarkCodes": [
+          {
+            "remarkCode": "ME",
+            "remarkCodeDesc": "$120.00, $59.00, $94.00, $60.00, $67.00, $43.00, $67.00 This procedure is not subject to the plan maximum.",
+            "additionalDesc": null,
+            "__typename": "ClaimExplanationOfRemarkCodes"
+          }
+        ],
+        "payeeInfo": [
+          {
+            "payeeName": "CHILDRENS DENTAL AT PRESTON TRAIL PC",
+            "payeeAddress": "PO BOX 950487<br>SAINT LOUIS, MO 63195-0000",
+            "checkAmount": "$338.00",
+            "checkNumber": "9999948077",
+            "checkStatus": "Paid",
+            "checkIssuedDate": "07/26/2025",
+            "paymentMethod": "EFT",
+            "__typename": "PayeeInfo"
+          }
+        ],
+        "__typename": "ClaimInfo"
+      },
+      "__typename": "ClaimDetail"
+    }
+  ],
+  "summary": {
+    "totalClaims": 1,
+    "totalCharged": 679,
+    "totalPaid": 169,
+    "totalProcedures": 7,
+    "patientResponsibility": 0
+  },
+  "extractionTime": 1757280871163,
+  "timestamp": 1757280871163,
+  "method": "api-graphql-only"
+}

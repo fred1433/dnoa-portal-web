@@ -154,12 +154,12 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
         summary: {
           patientName: `${metlifeData.patient.firstName} ${metlifeData.patient.lastName}`,
           memberId: metlifeData.patient.subscriberId,
-          planMaximum: metlifeData.eligibility?.basicPlan?.planMaximum || '$0',
-          maximumUsed: metlifeData.eligibility?.basicPlan?.maximumUsed || '$0',
-          maximumRemaining: metlifeData.eligibility?.basicPlan?.maximumRemaining || '$0',
-          deductible: metlifeData.eligibility?.basicPlan?.deductible || '$0',
-          deductibleMet: metlifeData.eligibility?.basicPlan?.deductibleMet || '$0',
-          network: metlifeData.eligibility?.patientInfo?.network || 'In-Network'
+          planMaximum: metlifeData.eligibility?.basicPlan?.planMaximum || 'N/A',
+          maximumUsed: metlifeData.eligibility?.basicPlan?.maximumUsed || 'N/A',
+          maximumRemaining: metlifeData.eligibility?.basicPlan?.maximumRemaining || 'N/A',
+          deductible: metlifeData.eligibility?.basicPlan?.deductible || 'N/A',
+          deductibleMet: metlifeData.eligibility?.basicPlan?.deductibleMet || 'N/A',
+          network: metlifeData.eligibility?.patientInfo?.network || 'N/A'
         },
         claims: metlifeData.claims || [],
         eligibility: metlifeData.eligibility,

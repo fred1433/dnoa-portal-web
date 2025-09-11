@@ -141,11 +141,30 @@ class MetLifeService {
     const pageTitle = await this.page.title().catch(() => 'N/A');
     onLog(`   Page title: ${pageTitle}`);
     
-    // Check if already logged in
-    if (currentUrl.includes('/home') && !this.isLoginPage(currentUrl)) {
-      onLog('✅ Already logged in with saved session');
-      await this.saveSession();
-      return { success: true };
+    // Check if already logged in - wait a bit to see if we get redirected
+    const isLoggedInUrl = (url) => {
+      return (url.includes('/home') || 
+              url.includes('/search') || 
+              url.includes('/patient') ||
+              url.includes('/eligibility')) && 
+             !this.isLoginPage(url) && 
+             !url.includes('authorization.oauth2');
+    };
+    
+    if (isLoggedInUrl(currentUrl)) {
+      onLog('   Checking if truly logged in...');
+      await this.page.waitForTimeout(3000);
+      
+      // Check URL again after waiting
+      const urlAfterWait = this.page.url();
+      if (isLoggedInUrl(urlAfterWait)) {
+        onLog('✅ Already logged in with saved session');
+        await this.saveSession();
+        return { success: true };
+      } else {
+        onLog('   Redirected to login page');
+        currentUrl = urlAfterWait;
+      }
     }
 
     // Login required
@@ -326,7 +345,13 @@ class MetLifeService {
       const finalUrl = this.page.url();
       onLog(`   Final URL after login: ${finalUrl}`);
       
-      if (finalUrl.includes('/home')) {
+      // After OTP, we might land on different pages (home, search, etc.)
+      // Check if we're NOT on login/auth pages anymore
+      if (finalUrl.includes('/home') || 
+          finalUrl.includes('/search') || 
+          finalUrl.includes('/patient') ||
+          finalUrl.includes('/eligibility') ||
+          (!this.isLoginPage(finalUrl) && !finalUrl.includes('authorization.oauth2'))) {
         onLog('✅ Login successful!');
         await this.saveSession();
         return { success: true };

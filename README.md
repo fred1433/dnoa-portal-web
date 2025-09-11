@@ -15,7 +15,7 @@ Multi-portal dental insurance data extraction service.
 ```bash
 npm install
 npm start
-# Access at http://localhost:3000/?key=demo2024
+# Access at http://localhost:3000/?key=demo2024secure
 ```
 
 ## Notes

@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Simple API key protection
-const API_KEY = process.env.API_KEY || 'demo2024';
+const API_KEY = process.env.API_KEY || 'demo2024secure';
 
 // Active SSE connections
 const sseClients = new Set();

@@ -142,7 +142,9 @@ class DentaQuestService {
     try {
       // Navigate to search page only if not already there
       const currentUrl = this.page.url();
-      if (!currentUrl.includes('provideraccess.dentaquest.com/s/')) {
+      // Skip navigation if we're already on the exact page
+      if (currentUrl !== 'https://provideraccess.dentaquest.com/s/' && 
+          !currentUrl.startsWith('https://provideraccess.dentaquest.com/s/?')) {
         await this.safeGoto('https://provideraccess.dentaquest.com/s/', onLog);
       }
       

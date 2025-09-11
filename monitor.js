@@ -158,27 +158,70 @@ async function testMetLife() {
   try {
     console.log('🔍 Testing MetLife...');
     
-    // Pour MetLife, on teste juste la connexion jusqu'à l'OTP
-    // (pas de patient test car OTP requis)
+    // Initialize et vérifier si session active
     await service.initialize(true, msg => console.log(`  ML: ${msg}`));
     
-    // Si on arrive ici sans erreur, c'est que le login fonctionne
-    await service.close();
+    // Si on arrive ici, vérifier si on a une session valide en testant avec un patient
+    const patient = TEST_PATIENTS.MetLife;
     
-    const duration = Date.now() - startTime;
-    console.log('⚠️ MetLife: Degraded (OTP required but login OK)');
-    
-    return {
-      portal: 'MetLife',
-      status: 'degraded',
-      duration_ms: duration,
-      details: 'Login successful but OTP required for full test'
-    };
+    try {
+      // Tenter une extraction avec le patient de test
+      const result = await service.extractPatientData(
+        patient.subscriberId,
+        patient.lastName,
+        patient.dateOfBirth,
+        patient.firstName,
+        msg => console.log(`  ML: ${msg}`)
+      );
+      
+      await service.close();
+      const duration = Date.now() - startTime;
+      
+      if (result.success && result.data) {
+        console.log('✅ MetLife: OK (session active)');
+        return {
+          portal: 'MetLife',
+          status: 'up',
+          duration_ms: duration,
+          details: `Found ${result.data.claims?.length || 0} claims (session active)`
+        };
+      } else {
+        console.log('⚠️ MetLife: Degraded (login OK but extraction failed)');
+        return {
+          portal: 'MetLife',
+          status: 'degraded',
+          duration_ms: duration,
+          details: 'Login successful but extraction failed'
+        };
+      }
+    } catch (extractError) {
+      // Si l'extraction échoue, c'est probablement à cause de l'OTP
+      await service.close();
+      const duration = Date.now() - startTime;
+      
+      if (extractError.message.includes('OTP')) {
+        console.log('⚠️ MetLife: Degraded (OTP required for full test)');
+        return {
+          portal: 'MetLife',
+          status: 'degraded',
+          duration_ms: duration,
+          details: 'Login successful but OTP required for full test'
+        };
+      } else {
+        console.log('⚠️ MetLife: Degraded (login OK, extraction error)');
+        return {
+          portal: 'MetLife',
+          status: 'degraded',
+          duration_ms: duration,
+          details: `Login OK but error: ${extractError.message}`
+        };
+      }
+    }
     
   } catch (error) {
     const duration = Date.now() - startTime;
     
-    // Si l'erreur mentionne OTP, c'est que le login fonctionne
+    // Si l'erreur mentionne OTP durant l'init, c'est que le login fonctionne mais OTP requis
     if (error.message.includes('OTP')) {
       console.log('⚠️ MetLife: Degraded (OTP required)');
       return {

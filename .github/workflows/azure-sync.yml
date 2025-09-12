@@ -47,7 +47,7 @@ jobs:
         rm -rf scrapers/dental-portal/*-session/storageState.json
         
         # Update README with latest status
-        cat > scrapers/dental-portal/README.md << 'EOF'
+        cat > scrapers/dental-portal/README.md << 'ENDREADME'
 # Dental Portal Extractor
 
 ## 🎯 Overview
@@ -96,7 +96,7 @@ Complete dental insurance portal automation system with 5 portals fully integrat
 
 ## 📅 Last Updated
 $(date '+%B %d, %Y')
-EOF
+ENDREADME
         
         # Add and commit changes
         git add .

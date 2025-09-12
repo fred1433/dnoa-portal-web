@@ -754,8 +754,14 @@ class CignaService {
   async parseClaimsTableHeuristically(onLog = this.onLog || console.log) {
     // Try using specific selectors for Cigna's table structure first
     try {
+      // Wait a bit for the table to be fully loaded
+      await this.page.waitForTimeout(2000);
+      
       const claimsTable = await this.page.locator('table[data-test="claims-threesixty-search-result-table"]').first();
-      if (await claimsTable.isVisible({ timeout: 2000 })) {
+      onLog(`   Looking for claims table with selector: table[data-test="claims-threesixty-search-result-table"]`);
+      
+      if (await claimsTable.isVisible({ timeout: 5000 })) {
+        onLog(`   ✓ Claims table found`);
         const rows = await claimsTable.locator('tbody tr').all();
         const claims = [];
         

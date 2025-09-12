@@ -15,7 +15,7 @@ jobs:
       with:
         fetch-depth: 0
     
-    - name: Configure Azure DevOps Authentication
+    - name: Push to Azure DevOps
       env:
         AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
       run: |
@@ -23,20 +23,12 @@ jobs:
         git config --global user.email "fredric.de@dentistryautomation.com"
         git config --global user.name "Frédéric de Lavenne de Choulot"
         
-        # Configure Basic Auth for Azure DevOps (username MUST NOT be empty)
-        USERNAME="git"  # Azure DevOps requires a non-empty username
-        B64=$(printf '%s' "$USERNAME:${AZURE_DEVOPS_PAT}" | base64)
-        git config --global http.https://dev.azure.com/.extraheader "Authorization: Basic $B64"
-        git config --global credential.useHttpPath true
-        
-    - name: Clone and Update Azure Repo
-      run: |
         # Create temp directory
         mkdir -p temp-azure
         cd temp-azure
         
-        # Clone Azure repo (auth is handled by extraheader config)
-        git clone https://dev.azure.com/Simplifi-dentistry/AI-Powered-Scrapping/_git/AI-Powered-Scrapping .
+        # Clone Azure repo with token in URL (simplest method that works)
+        git clone "https://git:${AZURE_DEVOPS_PAT}@dev.azure.com/Simplifi-dentistry/AI-Powered-Scrapping/_git/AI-Powered-Scrapping" .
         
         # Create or update scrapers/dental-portal directory
         mkdir -p scrapers/dental-portal

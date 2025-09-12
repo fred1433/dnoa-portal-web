@@ -145,31 +145,37 @@ class CignaService {
     }
     
     try {
-      onLog('   Navigating to login page...');
-      await this.safeGoto('https://cignaforhcp.cigna.com/app/login', onLog);
-      onLog('   Navigation complete, checking current URL...');
-      const newUrl = this.page.url();
-      onLog(`   Current URL: ${newUrl}`);
+      // Try navigating to dashboard first to check if session is valid
+      onLog('   Checking session by navigating to dashboard...');
+      await this.page.goto('https://cignaforhcp.cigna.com/app/patient/search', { 
+        waitUntil: 'domcontentloaded', 
+        timeout: 30000 
+      });
       
-      // Wait a bit for page to settle
-      await this.page.waitForTimeout(2000);
+      // Wait a bit for any redirects
+      await this.page.waitForTimeout(3000);
       
-      // If already inside app (top nav present)
-      onLog('   Checking if already logged in...');
-      const alreadyLoggedIn = await this.page.locator('[data-test="primary-nav-child-chcp.patient.search"]').count()
-        .catch(() => 0);
+      const afterNavUrl = this.page.url();
+      onLog(`   Current URL: ${afterNavUrl}`);
       
-      if (alreadyLoggedIn > 0) {
-        onLog('✅ Session valid (patient search visible)');
-        this.isLoggedIn = true;
-        await this.saveSession(onLog);
-        return true;
+      // Check if we're on the patient search page (logged in) or redirected to login
+      if (!afterNavUrl.includes('/login')) {
+        // We're not on login page, check for nav element to confirm
+        const navPresent = await this.page.locator('[data-test="primary-nav-child-chcp.patient.search"]').count()
+          .catch(() => 0);
+        
+        if (navPresent > 0) {
+          onLog('✅ Session valid - already logged in!');
+          this.isLoggedIn = true;
+          await this.saveSession(onLog);
+          return true;
+        }
       }
       
-      onLog('   Not logged in, will proceed with login...');
+      onLog('   Session expired or invalid, need to login...');
     } catch (navError) {
       onLog(`   ⚠️ Navigation error: ${navError.message}`);
-      // Continue anyway
+      // Continue to login
     }
 
     // Otherwise perform login

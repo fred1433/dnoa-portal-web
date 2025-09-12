@@ -789,9 +789,11 @@
             logsContainer.innerHTML = '';
             logsSection.classList.add('active');
             resultsSection.classList.remove('active');
-            // Clear previous results content
-            document.getElementById('summaryGrid').innerHTML = '';
-            document.getElementById('cdtCodesSection').innerHTML = '';
+            // Clear previous results content (check if elements exist first)
+            const summaryGrid = document.getElementById('summaryGrid');
+            const cdtCodesSection = document.getElementById('cdtCodesSection');
+            if (summaryGrid) summaryGrid.innerHTML = '';
+            if (cdtCodesSection) cdtCodesSection.innerHTML = '';
             statusBadge.textContent = 'Running';
             statusBadge.className = 'status-badge running';
             

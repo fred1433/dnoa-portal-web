@@ -8,4 +8,4 @@ node_modules/
 test-*.js
 .DS_Store
 monitoring.db
-*.db
+*.db# Azure sync configured Fri Sep 12 10:11:01 -03 2025

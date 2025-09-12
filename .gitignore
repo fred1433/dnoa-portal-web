@@ -3,9 +3,15 @@ node_modules/
 .dnoa-session/
 .dentaquest-session/
 .metlife-session/
+.cigna-session/
 *.log
 *.zip
 test-*.js
+test-*.sh
 .DS_Store
 monitoring.db
-*.db# Azure sync configured Fri Sep 12 10:11:01 -03 2025
+*.db
+*.backup*
+*.b64
+transfer-*.sh
+push-*.sh

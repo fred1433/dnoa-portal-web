@@ -288,6 +288,124 @@
             display: block;
         }
         
+        /* CDT Codes Section Styles */
+        .cdt-codes-section {
+            margin-top: 30px;
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        
+        .cdt-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .cdt-header h2 {
+            color: #1e293b;
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .cdt-count {
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .cdt-header p {
+            color: #64748b;
+            margin-top: 8px;
+        }
+        
+        .cdt-success-message {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            color: #065f46;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .success-icon {
+            font-size: 20px;
+        }
+        
+        .cdt-description {
+            color: #475569;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .cdt-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .cdt-table thead {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .cdt-table th {
+            padding: 12px 16px;
+            text-align: left;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .cdt-table tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s ease;
+        }
+        
+        .cdt-table tbody tr:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .cdt-table tbody tr:last-child {
+            border-bottom: none;
+        }
+        
+        .cdt-table td {
+            padding: 12px 16px;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .cdt-table .code-cell {
+            font-weight: 600;
+            color: #1e40af;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .cdt-table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
         .otp-input-group {
             display: flex;
             gap: 10px;
@@ -392,6 +510,9 @@
                 
                 <div class="summary-grid" id="summaryGrid"></div>
                 
+                <!-- Container for CDT codes table -->
+                <div id="cdtCodesSection"></div>
+                
                 <div class="action-buttons">
                     <button class="btn" onclick="downloadJSON()">
                         📥 Download Full JSON
@@ -407,486 +528,6 @@
         </div>
     </div>
 
-    <script>
-        // Get API key from URL params
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiKey = urlParams.get('key') || 'demo2024secure';
-        
-        // Test data for each portal
-        const testData = {
-            'DNOA': {
-                firstName: 'SOPHIE',
-                lastName: 'ROBINSON',
-                subscriberId: '825978894',
-                dateOfBirth: '09/27/2016'
-            },
-            'DentaQuest': {
-                firstName: 'Cason',
-                lastName: 'Wright',
-                subscriberId: '710875473',
-                dateOfBirth: '03/29/2016'
-            },
-            'MetLife': {
-                firstName: 'AVERLY',
-                lastName: 'TEDFORD',
-                subscriberId: '635140654',
-                dateOfBirth: '06/15/2015'
-            },
-            'Cigna': {
-                firstName: 'ELLIE',
-                lastName: 'WILLIAMS',
-                subscriberId: 'U72997972',
-                dateOfBirth: '11/14/2017'
-            }
-        };
-        
-        // Auto-fill form when portal changes
-        document.getElementById('portal').addEventListener('change', function(e) {
-            const portal = e.target.value;
-            if (testData[portal]) {
-                const data = testData[portal];
-                document.getElementById('firstName').value = data.firstName;
-                document.getElementById('lastName').value = data.lastName;
-                document.getElementById('subscriberId').value = data.subscriberId;
-                document.getElementById('dateOfBirth').value = data.dateOfBirth;
-            }
-        });
-        
-        // Check VPN location
-        async function checkVPNLocation() {
-            // Only check location if running locally (not on Render)
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                try {
-                    const response = await fetch('/api/location');
-                    const data = await response.json();
-                    
-                    if (data && data.isUS === false) {
-                        document.getElementById('vpnWarning').style.display = 'block';
-                    } else if (data && data.isUS === true) {
-                        document.getElementById('vpnWarning').style.display = 'none';
-                    }
-                } catch (error) {
-                    // Silently fail if location check doesn't work
-                }
-            }
-        }
-        
-        // Fill default values on page load
-        window.addEventListener('DOMContentLoaded', function() {
-            const portal = document.getElementById('portal').value;
-            if (testData[portal]) {
-                const data = testData[portal];
-                document.getElementById('firstName').value = data.firstName;
-                document.getElementById('lastName').value = data.lastName;
-                document.getElementById('subscriberId').value = data.subscriberId;
-                document.getElementById('dateOfBirth').value = data.dateOfBirth;
-            }
-            
-            // Check VPN location
-            checkVPNLocation();
-        });
-        
-        let eventSource = null;
-        let extractedData = null;
-        
-        const form = document.getElementById('extractForm');
-        const logsSection = document.getElementById('logsSection');
-        const logsContainer = document.getElementById('logsContainer');
-        const resultsSection = document.getElementById('resultsSection');
-        const errorMessage = document.getElementById('errorMessage');
-        const statusBadge = document.getElementById('statusBadge');
-        const extractBtn = document.getElementById('extractBtn');
-        const btnText = document.getElementById('btnText');
-        const spinner = extractBtn.querySelector('.spinner');
-        const otpSection = document.getElementById('otpSection');
-        const otpInput = document.getElementById('otpInput');
-        const submitOtpBtn = document.getElementById('submitOtpBtn');
-        
-        // Pre-fill test data for demo
-        document.getElementById('firstName').value = 'SOPHIE';
-        document.getElementById('lastName').value = 'ROBINSON';
-        document.getElementById('subscriberId').value = '825978894';
-        document.getElementById('dateOfBirth').value = '09/27/2016';
-        
-        function addLog(message) {
-            const logLine = document.createElement('div');
-            logLine.className = 'log-line';
-            logLine.textContent = message;
-            logsContainer.appendChild(logLine);
-            logsContainer.scrollTop = logsContainer.scrollHeight;
-            
-            // Check if OTP is required
-            if (message.includes('OTP Required!') || message.includes('Waiting for OTP')) {
-                otpSection.classList.add('active');
-                otpInput.focus();
-            }
-        }
-        
-        // Handle OTP submission
-        submitOtpBtn.addEventListener('click', async () => {
-            const otp = otpInput.value.trim();
-            if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
-                alert('Please enter a valid 6-digit code');
-                return;
-            }
-            
-            submitOtpBtn.disabled = true;
-            submitOtpBtn.textContent = 'Submitting...';
-            
-            try {
-                const response = await fetch(`/api/submit-otp?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ otp })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    addLog('✅ OTP submitted successfully');
-                    otpSection.classList.remove('active');
-                    otpInput.value = '';
-                } else {
-                    alert('Failed to submit OTP: ' + result.error);
-                }
-            } catch (error) {
-                alert('Error submitting OTP: ' + error.message);
-            } finally {
-                submitOtpBtn.disabled = false;
-                submitOtpBtn.textContent = 'Submit OTP';
-            }
-        });
-        
-        // Allow Enter key to submit OTP
-        otpInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !submitOtpBtn.disabled) {
-                submitOtpBtn.click();
-            }
-        });
-        
-        function connectToSSE() {
-            eventSource = new EventSource(`/api/stream?key=${apiKey}`);
-            
-            eventSource.addEventListener('connected', (e) => {
-                console.log('Connected to SSE');
-            });
-            
-            eventSource.addEventListener('log', (e) => {
-                const data = JSON.parse(e.data);
-                addLog(data.message);
-            });
-            
-            eventSource.addEventListener('complete', (e) => {
-                statusBadge.textContent = 'Success';
-                statusBadge.className = 'status-badge success';
-            });
-            
-            eventSource.addEventListener('error', (e) => {
-                if (e.data) {
-                    const data = JSON.parse(e.data);
-                    showError(data.error);
-                }
-                statusBadge.textContent = 'Error';
-                statusBadge.className = 'status-badge error';
-            });
-        }
-        
-        function showError(message) {
-            errorMessage.textContent = '❌ ' + message;
-            errorMessage.classList.add('active');
-        }
-        
-        function hideError() {
-            errorMessage.classList.remove('active');
-        }
-        
-        function displayResults(data) {
-            const summary = data.summary;
-            const summaryGrid = document.getElementById('summaryGrid');
-            
-            // Detect portal type based on available data
-            const portal = data.portal || 'Unknown';
-            
-            // Build cards dynamically based on available data
-            let cards = [];
-            
-            // Patient card (always present)
-            cards.push(`
-                <div class="summary-card">
-                    <h4>Patient</h4>
-                    <div class="value">${summary.patientName}</div>
-                    <div class="subtitle">ID: ${summary.memberId}</div>
-                </div>
-            `);
-            
-            // Portal/Status card
-            if (summary.isEligible !== undefined) {
-                // DentaQuest style eligibility
-                cards.push(`
-                    <div class="summary-card" style="${summary.isEligible ? 'background: #d1fae5; border-color: #10b981;' : 'background: #fee2e2; border-color: #ef4444;'}">
-                        <h4 style="${summary.isEligible ? 'color: #065f46;' : 'color: #991b1b;'}">Coverage Status</h4>
-                        <div class="value" style="${summary.isEligible ? 'color: #065f46;' : 'color: #991b1b;'}">${summary.isEligible ? '✅ Active' : '❌ Inactive'}</div>
-                        <div class="subtitle" style="${summary.isEligible ? 'color: #047857;' : 'color: #dc2626;'}">${summary.coverageEndDate ? `Until ${summary.coverageEndDate}` : 'Currently eligible'}</div>
-                    </div>
-                `);
-            } else if (summary.planName && summary.planName !== 'undefined') {
-                // DNOA style plan info
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>Plan</h4>
-                        <div class="value">${summary.status || 'Active'}</div>
-                        <div class="subtitle">${summary.planName}</div>
-                    </div>
-                `);
-            }
-            
-            // Financial cards for DentaQuest
-            if (summary.totalBilled !== undefined && summary.totalBilled !== null) {
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>💰 Total Billed</h4>
-                        <div class="value">$${summary.totalBilled?.toFixed(2) || '0.00'}</div>
-                        <div class="subtitle">Submitted charges</div>
-                    </div>
-                `);
-            }
-            
-            if (summary.totalPaid !== undefined && summary.totalPaid !== null) {
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>✅ Insurance Paid</h4>
-                        <div class="value" style="color: #059669;">$${summary.totalPaid?.toFixed(2) || '0.00'}</div>
-                        <div class="subtitle">Approved amount</div>
-                    </div>
-                `);
-            }
-            
-            if (summary.patientResponsibility !== undefined && summary.patientResponsibility !== null) {
-                const hasBalance = summary.patientResponsibility > 0;
-                cards.push(`
-                    <div class="summary-card" style="${hasBalance ? 'background: #fef2f2; border-color: #f87171;' : ''}">
-                        <h4>Patient Balance</h4>
-                        <div class="value" style="${hasBalance ? 'color: #dc2626;' : 'color: #059669;'}">$${summary.patientResponsibility?.toFixed(2) || '0.00'}</div>
-                        <div class="subtitle">${hasBalance ? 'Amount due' : 'No balance'}</div>
-                    </div>
-                `);
-            }
-            
-            // Claims count for DentaQuest
-            if (summary.totalClaims !== undefined) {
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>📋 Claims Processed</h4>
-                        <div class="value">${summary.totalClaims}</div>
-                        <div class="subtitle">Historical claims</div>
-                    </div>
-                `);
-            }
-            
-            // Deductible (DNOA)
-            if (summary.deductible) {
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>Deductible</h4>
-                        <div class="value">$${summary.deductible.remaining}</div>
-                        <div class="subtitle">Remaining of $${summary.deductible.amount}</div>
-                    </div>
-                `);
-            }
-            
-            // Annual Maximum (DNOA)
-            if (summary.annualMaximum) {
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>Annual Maximum</h4>
-                        <div class="value">$${summary.annualMaximum.remaining}</div>
-                        <div class="subtitle">Remaining of $${summary.annualMaximum.amount}</div>
-                    </div>
-                `);
-            }
-            
-            // CDT codes card (always prominent)
-            cards.push(`
-                <div class="summary-card" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #10b981; grid-column: span 2;">
-                    <h4 style="color: #065f46;">🦷 CDT PROCEDURE CODES</h4>
-                    <div class="value" style="color: #065f46; font-size: 32px;">${summary.totalCDTCodes || summary.procedureHistory || 0}</div>
-                    <div class="subtitle" style="color: #047857; font-weight: 600;">Dental procedures successfully extracted!</div>
-                </div>
-            `);
-            
-            // Benefits categories (DNOA)
-            if (summary.benefitCategories && summary.benefitCategories !== 'undefined') {
-                cards.push(`
-                    <div class="summary-card">
-                        <h4>Benefits</h4>
-                        <div class="value">${summary.benefitCategories}</div>
-                        <div class="subtitle">Coverage categories</div>
-                    </div>
-                `);
-            }
-            
-            summaryGrid.innerHTML = cards.join('');
-            
-            // Add CDT codes details section if available
-            if (summary.cdtCodes && summary.cdtCodes.length > 0) {
-                // First, remove any existing CDT section
-                const existingCdtSection = document.getElementById('cdtSection');
-                if (existingCdtSection) {
-                    existingCdtSection.remove();
-                }
-                
-                const cdtSection = document.createElement('div');
-                cdtSection.id = 'cdtSection'; // Add ID to identify it later
-                cdtSection.style.marginTop = '30px';
-                cdtSection.innerHTML = `
-                    <h3 style="color: #065f46; margin-bottom: 15px;">
-                        ✅ CDT Codes Successfully Extracted - ${summary.totalCDTCodes} Dental Procedures
-                    </h3>
-                    <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 10px; padding: 20px;">
-                        <p style="color: #047857; margin-bottom: 15px; font-weight: 600;">
-                            Complete dental procedure history for ${summary.patientName}:
-                        </p>
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #d1fae5;">
-                                    <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">CDT Code</th>
-                                    <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">Description</th>
-                                    <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">Date</th>
-                                    <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">Tooth</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${summary.cdtCodes.slice(0, 15).map((cdt, index) => `
-                                    <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
-                                        <td style="padding: 8px; color: #065f46; font-weight: 600;">${cdt.code}</td>
-                                        <td style="padding: 8px; color: #374151;">${cdt.description || 'Dental Procedure'}</td>
-                                        <td style="padding: 8px; color: #374151;">${cdt.date && cdt.date !== 'N/A' ? cdt.date : '-'}</td>
-                                        <td style="padding: 8px; color: #374151;">${cdt.toothNumber || '-'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                        ${summary.cdtCodes.length > 15 ? `
-                            <div style="padding: 10px; color: #047857; font-style: italic; text-align: center; border-top: 1px solid #d1fae5; margin-top: 10px;">
-                                ... and ${summary.cdtCodes.length - 15} more procedures (download full JSON for complete list)
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-                resultsSection.insertBefore(cdtSection, resultsSection.querySelector('.action-buttons'));
-            }
-            
-            resultsSection.classList.add('active');
-        }
-        
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Reset UI
-            hideError();
-            logsContainer.innerHTML = '';
-            logsSection.classList.add('active');
-            resultsSection.classList.remove('active');
-            // Clear previous results content (check if elements exist first)
-            const summaryGrid = document.getElementById('summaryGrid');
-            const cdtCodesSection = document.getElementById('cdtCodesSection');
-            if (summaryGrid) summaryGrid.innerHTML = '';
-            if (cdtCodesSection) cdtCodesSection.innerHTML = '';
-            statusBadge.textContent = 'Running';
-            statusBadge.className = 'status-badge running';
-            
-            // Disable button
-            extractBtn.disabled = true;
-            btnText.textContent = 'Extracting...';
-            spinner.style.display = 'inline-block';
-            
-            // Connect to SSE
-            connectToSSE();
-            
-            // Get form data
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData);
-            
-            try {
-                const response = await fetch(`/api/extract?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    extractedData = result.data;
-                    displayResults(result.data);
-                } else {
-                    showError(result.error);
-                }
-                
-            } catch (error) {
-                showError('Network error: ' + error.message);
-            } finally {
-                // Re-enable button
-                extractBtn.disabled = false;
-                btnText.textContent = 'Extract Data';
-                spinner.style.display = 'none';
-                
-                // Disconnect SSE
-                if (eventSource) {
-                    eventSource.close();
-                }
-            }
-        });
-        
-        function downloadJSON() {
-            if (!extractedData) return;
-            
-            const dataStr = JSON.stringify(extractedData, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `dnoa-extract-${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-        
-        function viewJSON() {
-            if (!extractedData) return;
-            
-            const jsonStr = JSON.stringify(extractedData, null, 2);
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(`
-                <html>
-                <head><title>JSON Data</title></head>
-                <body>
-                    <pre style="font-family: monospace; padding: 20px;">
-                        ${jsonStr.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-                    </pre>
-                </body>
-                </html>
-            `);
-        }
-        
-        function resetForm() {
-            form.reset();
-            logsSection.classList.remove('active');
-            resultsSection.classList.remove('active');
-            otpSection.classList.remove('active');
-            hideError();
-            extractedData = null;
-            otpInput.value = '';
-            
-            // Re-fill demo data
-            document.getElementById('firstName').value = 'SOPHIE';
-            document.getElementById('lastName').value = 'ROBINSON';
-            document.getElementById('subscriberId').value = '825978894';
-            document.getElementById('dateOfBirth').value = '09/27/2016';
-        }
-    </script>
-</body>
+    <!-- Application JavaScript (compiled from TypeScript) -->
+    <script src="app.js"></script>
 </html>

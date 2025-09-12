@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "API_KEY=demo2024secure nodemon server.js",
-    "dev:watch": "API_KEY=demo2024secure nodemon server.js"
+    "dev:watch": "API_KEY=demo2024secure nodemon server.js",
+    "build": "tsc && cp dist/public/app.js public/app.js",
+    "build:watch": "tsc --watch",
+    "prebuild": "rm -rf dist",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -20,6 +24,11 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.2",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
   }
 }

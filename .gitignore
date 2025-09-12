@@ -15,3 +15,7 @@ monitoring.db
 *.b64
 transfer-*.sh
 push-*.sh
+
+# TypeScript build artifacts
+dist/
+public/app.js

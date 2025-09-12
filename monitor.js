@@ -7,6 +7,7 @@ const fs = require('fs');
 const DNOAService = require('./dnoa-service');
 const DentaQuestService = require('./dentaquest-service');
 const MetLifeService = require('./metlife-service');
+const CignaService = require('./cigna-service');
 
 // Patients de test (données réelles de l'interface)
 const TEST_PATIENTS = {
@@ -27,6 +28,12 @@ const TEST_PATIENTS = {
     firstName: 'AVERLY',
     lastName: 'TEDFORD',
     dateOfBirth: '06/15/2015'
+  },
+  Cigna: {
+    subscriberId: 'U72997972',
+    firstName: 'ELLIE',
+    lastName: 'WILLIAMS',
+    dateOfBirth: '11/14/2017'
   }
 };
 
@@ -145,6 +152,92 @@ async function testDentaQuest() {
       portal: 'DentaQuest',
       status: 'down',
       duration_ms: Date.now() - startTime,
+      error_message: error.message
+    };
+  }
+}
+
+// Fonction pour tester Cigna
+async function testCigna() {
+  const startTime = Date.now();
+  const service = new CignaService();
+  
+  try {
+    console.log('🔍 Testing Cigna...');
+    
+    // Initialize avec session persistante
+    await service.initialize(true, msg => console.log(`  Cigna: ${msg}`));
+    
+    // Si on arrive ici, tenter une extraction avec le patient de test
+    const patient = TEST_PATIENTS.Cigna;
+    
+    try {
+      const data = await service.extractPatientData(
+        patient,
+        msg => console.log(`  Cigna: ${msg}`)
+      );
+      
+      await service.close();
+      const duration = Date.now() - startTime;
+      
+      if (data && data.summary) {
+        console.log('✅ Cigna: OK');
+        return {
+          portal: 'Cigna',
+          status: 'up',
+          duration_ms: duration,
+          details: `Found ${data.claims?.length || 0} claims, deductible: ${data.summary.deductible}`
+        };
+      } else {
+        console.log('⚠️ Cigna: Degraded (login OK but extraction failed)');
+        return {
+          portal: 'Cigna',
+          status: 'degraded',
+          duration_ms: duration,
+          details: 'Login successful but extraction failed'
+        };
+      }
+    } catch (extractError) {
+      await service.close();
+      const duration = Date.now() - startTime;
+      
+      if (extractError.message.includes('OTP')) {
+        console.log('⚠️ Cigna: Degraded (OTP required for full test)');
+        return {
+          portal: 'Cigna',
+          status: 'degraded',
+          duration_ms: duration,
+          details: 'Login successful but OTP required for full test'
+        };
+      } else {
+        console.log('⚠️ Cigna: Degraded (login OK, extraction error)');
+        return {
+          portal: 'Cigna',
+          status: 'degraded',
+          duration_ms: duration,
+          details: `Login OK but error: ${extractError.message}`
+        };
+      }
+    }
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    if (error.message.includes('OTP')) {
+      console.log('⚠️ Cigna: Degraded (OTP required)');
+      return {
+        portal: 'Cigna',
+        status: 'degraded',
+        duration_ms: duration,
+        details: 'OTP required - login flow working'
+      };
+    }
+    
+    console.log('❌ Cigna: Error -', error.message);
+    return {
+      portal: 'Cigna',
+      status: 'down',
+      duration_ms: duration,
       error_message: error.message
     };
   }
@@ -271,7 +364,7 @@ async function runAllTests() {
   console.log('🚀 Running all tests in PARALLEL...');
   
   // Exécuter tous les tests en parallèle
-  const [dnoaResult, dqResult, mlResult] = await Promise.all([
+  const [dnoaResult, dqResult, mlResult, cignaResult] = await Promise.all([
     testDNOA().catch(error => ({
       portal: 'DNOA',
       status: 'down',
@@ -289,6 +382,12 @@ async function runAllTests() {
       status: 'down',
       duration_ms: 0,
       error_message: error.message
+    })),
+    testCigna().catch(error => ({
+      portal: 'Cigna',
+      status: 'down',
+      duration_ms: 0,
+      error_message: error.message
     }))
   ]);
   
@@ -296,10 +395,11 @@ async function runAllTests() {
   await Promise.all([
     saveResult(dnoaResult),
     saveResult(dqResult),
-    saveResult(mlResult)
+    saveResult(mlResult),
+    saveResult(cignaResult)
   ]);
   
-  const results = [dnoaResult, dqResult, mlResult];
+  const results = [dnoaResult, dqResult, mlResult, cignaResult];
   
   // Résumé
   console.log('\n📊 SUMMARY:');

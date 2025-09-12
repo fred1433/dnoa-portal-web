@@ -160,9 +160,34 @@ class CignaService {
       
       // Check if we're on the patient search page (logged in) or redirected to login
       if (!afterNavUrl.includes('/login')) {
-        // We're not on login page, check for nav element to confirm
-        const navPresent = await this.page.locator('[data-test="primary-nav-child-chcp.patient.search"]').count()
-          .catch(() => 0);
+        // On n'est PAS sur la page de login, donc on est probablement connecté
+        // MAIS la page peut ne pas être complètement chargée, donc on attend un peu plus
+        onLog('   Not on login page, checking if really logged in...');
+        
+        // Attendre un peu plus pour que les éléments se chargent
+        await this.page.waitForTimeout(2000);
+        
+        // Essayer plusieurs fois de détecter l'élément de navigation
+        let navPresent = 0;
+        for (let retry = 0; retry < 3; retry++) {
+          navPresent = await this.page.locator('[data-test="primary-nav-child-chcp.patient.search"]').count()
+            .catch(() => 0);
+          
+          if (navPresent > 0) break;
+          
+          // Si pas trouvé, peut-être chercher d'autres indicateurs qu'on est connecté
+          const searchButton = await this.page.locator('[data-test="search-submit-button"]').count().catch(() => 0);
+          const patientIdField = await this.page.locator('[data-test="patient_id_0"]').count().catch(() => 0);
+          
+          if (searchButton > 0 || patientIdField > 0) {
+            onLog('   Found search elements - we are logged in!');
+            navPresent = 1; // Forcer comme trouvé
+            break;
+          }
+          
+          onLog(`   Retry ${retry + 1}/3 - waiting for page elements...`);
+          await this.page.waitForTimeout(2000);
+        }
         
         if (navPresent > 0) {
           onLog('✅ Session valid - already logged in!');
@@ -394,19 +419,19 @@ class CignaService {
   // ---------- Search flow ----------
 
   async openPatientSearch(onLog = this.onLog || console.log) {
-    // From top nav
+    // We're already logged in and on the dashboard, just navigate directly
+    // Don't use safeGoto to avoid the retry loop that causes scrolling
     try {
-      const nav = this.page.locator('[data-test="primary-nav-child-chcp.patient.search"]');
-      if (await nav.isVisible({ timeout: 8000 })) {
-        await nav.click();
-        await this.page.waitForLoadState('networkidle');
-        await this.page.waitForTimeout(800);
-        onLog('🧭 Patient search page opened');
-        return;
-      }
-    } catch {}
-    // Direct URL (fallback)
-    await this.safeGoto('https://cignaforhcp.cigna.com/app/patient/search', onLog);
+      await this.page.goto('https://cignaforhcp.cigna.com/app/patient/search', { 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000 
+      });
+      await this.page.waitForTimeout(2000); // Let page settle
+      onLog('🧭 Patient search page opened');
+    } catch (e) {
+      onLog(`   Navigation warning: ${e.message}`);
+      // Continue anyway - page might still be usable
+    }
   }
 
   async fillSearchAndSubmit(patient, onLog = this.onLog || console.log) {
@@ -419,72 +444,189 @@ class CignaService {
     try { await this.page.locator('[data-test="patient_LN_0"]').fill(patient.lastName); } catch {}
 
     await this.page.locator('[data-test="search-submit-button"]').click();
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(1000);
-
+    onLog('   Search submitted, waiting for results...');
+    
+    // Don't wait for networkidle, just wait for the results to appear
+    await this.page.waitForTimeout(2000);
+    
     // Wait for results to appear
     await this.page.waitForSelector('[data-test^="patient-id-"]', { timeout: 15000 });
     onLog('✅ Patient search results loaded');
   }
 
   async openFirstPatientResult(onLog = this.onLog || console.log) {
+    // Wait for results table to be fully loaded
+    await this.page.waitForTimeout(1000);
+    
     // Click first result (CodeGen: [data-test="patient-id-0"])
     const firstRow = this.page.locator('[data-test="patient-id-0"]');
+    
+    // Make sure element is visible and clickable
+    await firstRow.scrollIntoViewIfNeeded();
+    await this.page.waitForTimeout(500);
+    
     if (await firstRow.isVisible({ timeout: 8000 })) {
+      onLog('   Clicking on patient ID...');
       await firstRow.click();
-      await this.page.waitForLoadState('networkidle');
-      await this.page.waitForTimeout(800);
+      // Don't wait for networkidle, just give it time to load
+      await this.page.waitForTimeout(3000);
       onLog('👤 Patient record opened');
       return;
     }
+    
     // fallback: click any patient id link
+    onLog('   Fallback: trying any patient link...');
     const any = this.page.locator('[data-test^="patient-id-"]').first();
     await any.click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForTimeout(3000);
   }
 
   // ---------- Eligibility extraction ----------
 
   async extractEligibilityFromCurrentPage(onLog = this.onLog || console.log) {
-    // The exact DOM can vary. We’ll parse visible text heuristically.
-    const text = (await this.page.textContent('body').catch(() => '')) || '';
+    // Extract data using specific selectors based on the HTML structure
+    const eligibility = {};
 
-    const getMoney = (labelRegex) => {
-      const m = text.match(new RegExp(`${labelRegex}[^$]*\\$\\s*([\\d,]+\\.?\\d*)`, 'i'));
-      return m ? parseFloat(m[1].replace(/,/g, '')) : null;
-    };
+    try {
+      // Patient Information
+      const patientName = await this.page.locator('[data-test="patient-name-value"]').textContent().catch(() => null);
+      const patientId = await this.page.locator('[data-test="patient-id-value"]').textContent().catch(() => null);
+      const patientGender = await this.page.locator('[data-test="patient-gender-value"]').textContent().catch(() => null);
+      const patientDob = await this.page.locator('[data-test="patient-dob-value"]').textContent().catch(() => null);
+      const patientRelationship = await this.page.locator('[data-test="patient-relationship-value"]').textContent().catch(() => null);
+      const patientAddress = await this.page.locator('[data-test="patient-address-value"]').textContent().catch(() => null);
 
-    const eligibility = {
-      network: this.extractAfter(text, /Network[:\s]/i),
-      planName: this.extractAfter(text, /(Plan|Program) (Name|Type)[:\s]/i),
-      benefitsAsOf: this.extractAfter(text, /Benefits as of[:\s]/i),
-      planStartDate: this.extractAfter(text, /(Plan|Benefit) (Start|Effective) Date[:\s]/i),
+      // Subscriber Information  
+      const subscriberName = await this.page.locator('[data-test="subscriber-name"]').textContent().catch(() => null);
+      const subscriberDob = await this.page.locator('[data-test="subscriber-dob"]').textContent().catch(() => null);
 
-      annualMaximum: getMoney('(Annual|Plan)\\s+Maximum'),
-      annualMaximumUsed: getMoney('(Maximum Used|Used to Date)'),
-      annualMaximumRemaining: null,
+      // Plan Information
+      const planType = await this.page.locator('[data-test="plan-type"]').textContent().catch(() => null);
+      const planRenews = await this.page.locator('[data-test="plan-renews"]').textContent().catch(() => null);
+      const accountNumber = await this.page.locator('[data-test="account-number"]').textContent().catch(() => null);
+      const accountName = await this.page.locator('[data-test="account-name"]').textContent().catch(() => null);
+      const network = await this.page.locator('[data-test="network-id"]').textContent().catch(() => null);
+      const initialCoverageDate = await this.page.locator('[data-test="initial-coverage-date"]').textContent().catch(() => null);
+      const currentCoverage = await this.page.locator('[data-test="current-coverage"]').textContent().catch(() => null);
 
-      deductible: getMoney('Deductible(?!\\s*Met)'),
-      deductibleMet: getMoney('Deductible\\s*Met'),
-    };
+      // Extract deductibles from the graph sections
+      let individualDeductibleRemaining = null;
+      let individualDeductibleTotal = null;
+      let familyDeductibleRemaining = null;
+      let familyDeductibleTotal = null;
 
-    if (eligibility.annualMaximum != null && eligibility.annualMaximumUsed != null) {
-      eligibility.annualMaximumRemaining = Math.max(
-        0,
-        eligibility.annualMaximum - eligibility.annualMaximumUsed
-      );
+      // Individual deductible
+      const indDeductSection = await this.page.locator('p:has-text("Individual Calendar Year Deductible remaining")').locator('..').first();
+      if (indDeductSection) {
+        const indRemaining = await indDeductSection.locator('[data-test="lbl-amount"]').getAttribute('value').catch(() => null);
+        const indTotal = await indDeductSection.locator('[data-test="lbl-total"]').textContent().catch(() => null);
+        individualDeductibleRemaining = indRemaining ? parseFloat(indRemaining) : null;
+        individualDeductibleTotal = indTotal ? parseFloat(indTotal.replace(/[$,]/g, '')) : null;
+      }
+
+      // Family deductible
+      const famDeductSection = await this.page.locator('p:has-text("Family Calendar Year Deductible remaining")').locator('..').first();
+      if (famDeductSection) {
+        const famRemaining = await famDeductSection.locator('[data-test="lbl-amount"]').getAttribute('value').catch(() => null);
+        const famTotal = await famDeductSection.locator('[data-test="lbl-total"]').textContent().catch(() => null);
+        familyDeductibleRemaining = famRemaining ? parseFloat(famRemaining) : null;
+        familyDeductibleTotal = famTotal ? parseFloat(famTotal.replace(/[$,]/g, '')) : null;
+      }
+
+      // Extract benefit maximums
+      let annualMaxRemaining = null;
+      let annualMaxTotal = null;
+      let orthodonticsMaxRemaining = null;
+      let orthodonticsMaxTotal = null;
+
+      // Individual Calendar Year Maximum
+      const indMaxSection = await this.page.locator('p:has-text("Individual Calendar Year Maximum remaining")').locator('..').first();
+      if (indMaxSection) {
+        const maxRemaining = await indMaxSection.locator('[data-test="lbl-amount"]').getAttribute('value').catch(() => null);
+        const maxTotal = await indMaxSection.locator('[data-test="lbl-total"]').textContent().catch(() => null);
+        annualMaxRemaining = maxRemaining ? parseFloat(maxRemaining) : null;
+        annualMaxTotal = maxTotal ? parseFloat(maxTotal.replace(/[$,]/g, '')) : null;
+      }
+
+      // Orthodontics Lifetime Maximum
+      const orthoMaxSection = await this.page.locator('p:has-text("Individual Lifetime Maximum remaining")').locator('..').first();
+      if (orthoMaxSection) {
+        const orthoRemaining = await orthoMaxSection.locator('[data-test="lbl-amount"]').getAttribute('value').catch(() => null);
+        const orthoTotal = await orthoMaxSection.locator('[data-test="lbl-total"]').textContent().catch(() => null);
+        orthodonticsMaxRemaining = orthoRemaining ? parseFloat(orthoRemaining) : null;
+        orthodonticsMaxTotal = orthoTotal ? parseFloat(orthoTotal.replace(/[$,]/g, '')) : null;
+      }
+
+      // Build structured eligibility object
+      eligibility.patient = {
+        name: patientName?.trim(),
+        id: patientId?.trim(),
+        gender: patientGender?.trim(),
+        dateOfBirth: patientDob?.trim(),
+        relationship: patientRelationship?.trim(),
+        address: patientAddress?.replace(/\s+/g, ' ').trim()
+      };
+
+      eligibility.subscriber = {
+        name: subscriberName?.trim(),
+        dateOfBirth: subscriberDob?.trim()
+      };
+
+      eligibility.plan = {
+        type: planType?.trim(),
+        renews: planRenews?.trim(),
+        accountNumber: accountNumber?.trim(),
+        accountName: accountName?.trim(),
+        network: network?.trim(),
+        initialCoverageDate: initialCoverageDate?.trim(),
+        currentCoverage: currentCoverage?.trim()
+      };
+
+      eligibility.deductibles = {
+        individual: {
+          remaining: individualDeductibleRemaining,
+          total: individualDeductibleTotal,
+          met: (individualDeductibleTotal && individualDeductibleRemaining != null) 
+            ? individualDeductibleTotal - individualDeductibleRemaining : null
+        },
+        family: {
+          remaining: familyDeductibleRemaining,
+          total: familyDeductibleTotal,
+          met: (familyDeductibleTotal && familyDeductibleRemaining != null)
+            ? familyDeductibleTotal - familyDeductibleRemaining : null
+        }
+      };
+
+      eligibility.maximums = {
+        annual: {
+          remaining: annualMaxRemaining,
+          total: annualMaxTotal,
+          used: (annualMaxTotal && annualMaxRemaining != null)
+            ? annualMaxTotal - annualMaxRemaining : null
+        },
+        orthodontics: {
+          remaining: orthodonticsMaxRemaining,
+          total: orthodonticsMaxTotal,
+          used: (orthodonticsMaxTotal && orthodonticsMaxRemaining != null)
+            ? orthodonticsMaxTotal - orthodonticsMaxRemaining : null
+        }
+      };
+
+      // For backward compatibility with existing code
+      eligibility.network = network?.trim();
+      eligibility.planName = planType?.trim();
+      eligibility.annualMaximum = annualMaxTotal;
+      eligibility.annualMaximumUsed = eligibility.maximums.annual.used;
+      eligibility.annualMaximumRemaining = annualMaxRemaining;
+      eligibility.deductible = individualDeductibleRemaining;
+      eligibility.deductibleMet = eligibility.deductibles.individual.met;
+
+    } catch (error) {
+      onLog(`   ⚠️ Error extracting eligibility details: ${error.message}`);
     }
-
-    // Try to pick some coinsurance hints (preventive/basic/major)
-    const coinsurance = {};
-    const coinMatches = text.matchAll(/(Preventive|Basic|Major)[^%\n]*?(\d{1,2})%\s*(?:in[-\s]*network)?/gi);
-    for (const m of coinMatches) {
-      coinsurance[m[1].toLowerCase()] = Number(m[2]);
-    }
-    if (Object.keys(coinsurance).length) eligibility.coinsurance = coinsurance;
 
     onLog(
-      `   ↳ Annual Max: ${fmt(eligibility.annualMaximum)}, Used: ${fmt(eligibility.annualMaximumUsed)}, Deductible: ${fmt(eligibility.deductible)}`
+      `   ↳ Annual Max: ${fmt(eligibility.annualMaximumRemaining)}/${fmt(eligibility.annualMaximum)}, Deductible: ${fmt(eligibility.deductible)}`
     );
 
     return eligibility;
@@ -564,7 +706,57 @@ class CignaService {
   }
 
   async parseClaimsTableHeuristically(onLog = this.onLog || console.log) {
-    // Look for the most "claim-looking" table (with Claim/Service headers)
+    // Try using specific selectors for Cigna's table structure first
+    try {
+      const claimsTable = await this.page.locator('table[data-test="claims-threesixty-search-result-table"]').first();
+      if (await claimsTable.isVisible({ timeout: 2000 })) {
+        const rows = await claimsTable.locator('tbody tr').all();
+        const claims = [];
+        
+        for (const row of rows) {
+          // Extract claim data using specific data-test attributes
+          const claimNumber = await row.locator('[data-test*="claimRefNumber"] a').textContent().catch(() => null);
+          const claimLink = await row.locator('[data-test*="claimRefNumber"] a').getAttribute('href').catch(() => null);
+          const status = await row.locator('[data-test*="claimStatus"]').textContent().catch(() => null);
+          const patientName = await row.locator('[data-test*="name-cell"] div').first().textContent().catch(() => null);
+          const patientId = await row.locator('[data-test*="name-cell"] .cg-small-note').textContent().catch(() => null);
+          const dob = await row.locator('[data-test*="patientDOB"]').textContent().catch(() => null);
+          const dos = await row.locator('[data-test*="dos-cell"]').textContent().catch(() => null);
+          const tin = await row.locator('[data-test*="tin-cell"]').textContent().catch(() => null);
+          const amountBilled = await row.locator('[data-test*="amtBill"]').textContent().catch(() => null);
+          const providerName = await row.locator('[data-test*="providerName"]').textContent().catch(() => null);
+          
+          const datum = {
+            number: claimNumber?.trim() || '',
+            link: claimLink || '',
+            serviceDate: dos?.trim() || '',
+            status: status?.trim().replace(/\s+/g, ' ') || '',
+            patientName: patientName?.trim() || '',
+            patientId: patientId?.trim() || '',
+            dateOfBirth: dob?.trim() || '',
+            tin: tin?.trim() || '',
+            providerName: providerName?.trim() || '',
+            billed: this.parseAmount(amountBilled),
+            paid: 0, // Will be extracted from detail page
+            services: []
+          };
+          
+          // Store the anchor element for clicking later
+          try {
+            datum._rowAnchorHandle = await row.locator('[data-test*="claimRefNumber"] a').elementHandle();
+          } catch {}
+          
+          claims.push(datum);
+        }
+        
+        onLog(`   Found ${claims.length} claims in table`);
+        return claims;
+      }
+    } catch (error) {
+      onLog(`   Could not parse using specific selectors, falling back to heuristic parsing`);
+    }
+    
+    // Fallback to original heuristic parsing
     const tables = await this.page.locator('table').all();
     const scored = [];
     for (const t of tables) {
@@ -600,6 +792,8 @@ class CignaService {
     const colBenefit = idx(/Benefit Amount/i);
     const colPaid = idx(/(Paid|Payment)/i);
     const colPayMethod = idx(/Payment Method/i);
+    const colProvider = idx(/Provider/i);
+    const colTin = idx(/TIN|Tax/i);
 
     const claims = [];
     for (const row of rows.slice(0, 50)) {
@@ -613,6 +807,8 @@ class CignaService {
         benefitAmount: this.parseAmount(colBenefit != null ? cells[colBenefit] : ''),
         paid: this.parseAmount(colPaid != null ? cells[colPaid] : ''),
         paymentMethod: colPayMethod != null ? (cells[colPayMethod] || '').trim() : '',
+        providerName: colProvider != null ? (cells[colProvider] || '').trim() : '',
+        tin: colTin != null ? (cells[colTin] || '').trim() : '',
         services: []
       };
 
@@ -680,7 +876,9 @@ class CignaService {
     if (!detailPage) return null;
     await detailPage.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
     await detailPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
-    await detailPage.waitForTimeout(500);
+    
+    // Petite pause pour s'assurer que tout est chargé (Angular)
+    await detailPage.waitForTimeout(3000);
 
     const detail = await this.extractClaimDetails(detailPage, onLog);
     try {
@@ -690,52 +888,168 @@ class CignaService {
   }
 
   async extractClaimDetails(page, onLog = this.onLog || console.log) {
-    const text = (await page.textContent('body').catch(() => '')) || '';
     const detail = {};
-
-    detail.totalBilled = this.findMoneyAfter(text, /Total Billed Amount/i) ??
-                         this.findMoneyAfter(text, /Total Charge/i);
-    detail.totalPatientPay = this.findMoneyAfter(text, /Total Patient Pay/i) ??
-                             this.findMoneyAfter(text, /Patient Responsibility/i);
-    detail.payment = this.findMoneyAfter(text, /\bPayment\b/i) ??
-                     this.findMoneyAfter(text, /Total Paid/i);
-
-    // Services table heuristic: pick the last table (often detail lines)
     let services = [];
+
+    // First try extracting with specific selectors for Cigna's claim detail page
     try {
-      const allTables = await page.locator('table').all();
-      const table = allTables[allTables.length - 1];
-      const rows = await table.locator('tbody tr').all();
-
-      for (const r of rows) {
-        const cells = (await r.locator('td').allTextContents()).map(s => s.trim());
-        if (!cells.length) continue;
-
-        const code = cells.find(c => /^D\d{4}[A-Z]?$/i.test(c));
-        const moneyIdxs = cells.map((v, i) => (/\$/.test(v) ? i : -1)).filter(i => i >= 0);
-
-        const service = {
-          date: cells.find(c => /\d{1,2}\/\d{1,2}\/\d{2,4}/.test(c)) || '',
-          procedureCode: code || '',
-          tooth: (cells.find(c => /\bTooth\b/i.test(c)) || '').replace(/.*Tooth:?/i, '').trim() || '',
-          status: cells.find(c => /Denied|Paid|Processed|Pending/i.test(c)) || '',
-          billed: this.parseAmount(cells[moneyIdxs[0]] || ''),
-          patientPay: this.parseAmount(cells[moneyIdxs[1]] || ''),
-          paid: this.parseAmount(cells[moneyIdxs[2]] || '')
-        };
-
-        // Skip obvious headers/summary rows
-        if (/^Date$/i.test(service.date) && /^D\d{4}/.test(service.procedureCode) === false) continue;
-        if (!service.procedureCode && moneyIdxs.length === 0) continue;
-
-        services.push(service);
+      // Extract summary amounts from specific elements
+      const paymentAmount = await page.locator('[data-test="payment-info-msg-value"]').textContent().catch(() => null);
+      if (paymentAmount) {
+        detail.payment = this.parseAmount(paymentAmount.replace(/.*?:\s*/, ''));
       }
-    } catch {
-      // fallback: scan text blocks for CDT codes
-      services = (text.match(/D\d{4}[A-Z]?/g) || []).slice(0, 50).map((code) => ({
-        date: '',
-        procedureCode: code,
-      }));
+
+      // Extract from the procedures table using specific data-test attributes
+      const proceduresTableCount = await page.locator('table[data-test="procedures-table"]').count();
+      onLog(`   Found ${proceduresTableCount} procedures tables`);
+      
+      const proceduresTable = await page.locator('table[data-test="procedures-table"]').first();
+      
+      if (proceduresTableCount > 0 && await proceduresTable.isVisible({ timeout: 2000 })) {
+        // Try with data-test attribute first, then fallback to all tbody tr
+        let rows = await proceduresTable.locator('tbody tr[data-test="procedures-table-row"]').all();
+        if (rows.length === 0) {
+          onLog(`   No rows with data-test attribute, trying all tbody tr`);
+          rows = await proceduresTable.locator('tbody tr').all();
+        }
+        onLog(`   Found ${rows.length} rows in procedures table`);
+        
+        for (const row of rows) {
+          // Extract using specific data-test attributes
+          const dateOfService = await row.locator('[data-test="date-of-service"]').textContent().catch(() => null);
+          const cdtCodeText = await row.locator('[data-test="cdt-code"]').textContent().catch(() => null);
+          
+          // If no cdt-code data-test, try looking in td cells directly
+          let cdtCodeAlt = null;
+          if (!cdtCodeText) {
+            const cells = await row.locator('td').allTextContents();
+            // Look for CDT code pattern in cells
+            cdtCodeAlt = cells.find(c => /D\d{4}/.test(c));
+            if (cdtCodeAlt) {
+              onLog(`   Found CDT in cell: ${cdtCodeAlt}`);
+            }
+          }
+          const toothNumber = await row.locator('[data-test="tooth-number"]').textContent().catch(() => null);
+          const amountCharged = await row.locator('[data-test="amount-charged"]').textContent().catch(() => null);
+          const coveredBalance = await row.locator('[data-test="covered-balance"]').textContent().catch(() => null);
+          const planCoinsurance = await row.locator('[data-test="plan-coinsurance-per"]').textContent().catch(() => null);
+          const patientResponsibility = await row.locator('[data-test="member-responsibility"]').textContent().catch(() => null);
+          
+          // Parse CDT code and description
+          let procedureCode = '';
+          let procedureDescription = '';
+          const codeText = cdtCodeText || cdtCodeAlt;
+          if (codeText) {
+            const match = codeText.match(/(D\d{4}[A-Z]?)\s*-?\s*(.*)$/);
+            if (match) {
+              procedureCode = match[1];
+              procedureDescription = match[2] || '';
+            }
+          }
+          
+          // Extract paid amount from plan coinsurance column (format: "100%= $XX.XX")
+          let paidAmount = 0;
+          if (planCoinsurance) {
+            const match = planCoinsurance.match(/\$\s*([\d,]+\.?\d*)/);
+            if (match) {
+              paidAmount = this.parseAmount(match[1]);
+            }
+          }
+          
+          const service = {
+            date: dateOfService?.trim() || '',
+            procedureCode: procedureCode,
+            procedureDescription: procedureDescription.trim(),
+            tooth: toothNumber?.trim().replace('--', '') || '',
+            billed: this.parseAmount(amountCharged),
+            covered: this.parseAmount(coveredBalance),
+            paid: paidAmount,
+            patientPay: this.parseAmount(patientResponsibility),
+            status: 'Processed' // Claims in detail view are typically processed
+          };
+          
+          // Only add if we have a valid CDT code
+          if (procedureCode) {
+            services.push(service);
+          }
+        }
+        
+        // Get totals from tfoot if available
+        const footerRow = await proceduresTable.locator('tfoot tr').first();
+        if (await footerRow.count() > 0) {
+          const totalAmountCharged = await footerRow.locator('td').nth(3).textContent().catch(() => null);
+          const totalPaid = await footerRow.locator('td').nth(8).textContent().catch(() => null);
+          const totalPatientResp = await footerRow.locator('[data-test="member-response-total"]').textContent().catch(() => null);
+          
+          detail.totalBilled = this.parseAmount(totalAmountCharged);
+          detail.totalPaid = this.parseAmount(totalPaid);
+          detail.totalPatientPay = this.parseAmount(totalPatientResp);
+        }
+        
+        onLog(`   ↳ Extracted ${services.length} CDT codes from procedures table`);
+      }
+    } catch (error) {
+      onLog(`   ⚠️ Could not extract using specific selectors: ${error.message}`);
+    }
+
+    // Fallback to text extraction if no services found with specific selectors
+    if (services.length === 0) {
+      const text = (await page.textContent('body').catch(() => '')) || '';
+      
+      // Try extracting summary amounts from text
+      if (!detail.payment) {
+        detail.payment = this.findMoneyAfter(text, /Claim Amount Paid/i) ??
+                        this.findMoneyAfter(text, /\bPayment\b/i) ??
+                        this.findMoneyAfter(text, /Total Paid/i);
+      }
+      
+      if (!detail.totalBilled) {
+        detail.totalBilled = this.findMoneyAfter(text, /Total Billed Amount/i) ??
+                            this.findMoneyAfter(text, /Total Charge/i) ??
+                            this.findMoneyAfter(text, /Amount Charged.*?Totals/is);
+      }
+      
+      if (!detail.totalPatientPay) {
+        detail.totalPatientPay = this.findMoneyAfter(text, /Total Patient Pay/i) ??
+                                this.findMoneyAfter(text, /Patient Responsibility.*?Totals/is);
+      }
+
+      // Fallback: Services table heuristic - pick the last table (often detail lines)
+      try {
+        const allTables = await page.locator('table').all();
+        const table = allTables[allTables.length - 1];
+        const rows = await table.locator('tbody tr').all();
+
+        for (const r of rows) {
+          const cells = (await r.locator('td').allTextContents()).map(s => s.trim());
+          if (!cells.length) continue;
+
+          const code = cells.find(c => /^D\d{4}[A-Z]?$/i.test(c));
+          const moneyIdxs = cells.map((v, i) => (/\$/.test(v) ? i : -1)).filter(i => i >= 0);
+
+          const service = {
+            date: cells.find(c => /\d{1,2}\/\d{1,2}\/\d{2,4}/.test(c)) || '',
+            procedureCode: code || '',
+            tooth: (cells.find(c => /\bTooth\b/i.test(c)) || '').replace(/.*Tooth:?/i, '').trim() || '',
+            status: cells.find(c => /Denied|Paid|Processed|Pending/i.test(c)) || '',
+            billed: this.parseAmount(cells[moneyIdxs[0]] || ''),
+            patientPay: this.parseAmount(cells[moneyIdxs[1]] || ''),
+            paid: this.parseAmount(cells[moneyIdxs[2]] || '')
+          };
+
+          // Skip obvious headers/summary rows
+          if (/^Date$/i.test(service.date) && /^D\d{4}/.test(service.procedureCode) === false) continue;
+          if (!service.procedureCode && moneyIdxs.length === 0) continue;
+
+          services.push(service);
+        }
+      } catch {
+        // Last resort fallback: scan text blocks for CDT codes
+        services = (text.match(/D\d{4}[A-Z]?/g) || []).slice(0, 50).map((code) => ({
+          date: '',
+          procedureCode: code,
+        }));
+      }
     }
 
     detail.services = services;
@@ -798,8 +1112,8 @@ class CignaService {
     }, { billed: 0, paid: 0, patient: 0 });
 
     const summary = {
-      patientName: `${patient.firstName} ${patient.lastName}`,
-      memberId: patient.subscriberId,
+      patientName: eligibility?.patient?.name || `${patient.firstName} ${patient.lastName}`,
+      memberId: eligibility?.patient?.id || patient.subscriberId,
 
       planMaximum: eligibility?.annualMaximum ?? null,
       maximumUsed: eligibility?.annualMaximumUsed ?? null,
@@ -807,6 +1121,13 @@ class CignaService {
       deductible: eligibility?.deductible ?? null,
       deductibleMet: eligibility?.deductibleMet ?? null,
       network: eligibility?.network ?? null,
+      
+      // Additional structured data
+      patient: eligibility?.patient || {},
+      subscriber: eligibility?.subscriber || {},
+      plan: eligibility?.plan || {},
+      deductibles: eligibility?.deductibles || {},
+      maximums: eligibility?.maximums || {},
 
       totalClaims: claims.length,
       totalServices: claims.reduce((s, c) => s + (c.services?.length || 0), 0),

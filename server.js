@@ -4,6 +4,7 @@ const DNOAService = require('./dnoa-service');
 const DentaQuestService = require('./dentaquest-service');
 const fs = require('fs');
 const MetLifeService = require('./metlife-service');
+const CignaService = require('./cigna-service');
 const monitor = require('./monitor');
 const cron = require('node-cron');
 const checkLocation = require('./check-location');
@@ -94,12 +95,14 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
     service = new DentaQuestService();
   } else if (portalLower === 'metlife') {
     service = new MetLifeService();
+  } else if (portalLower === 'cigna') {
+    service = new CignaService();
   } else if (portalLower === 'dnoa') {
     service = new DNOAService();
   } else {
     return res.status(400).json({ 
       success: false, 
-      error: `Unknown portal: ${portal}. Valid options are: DentaQuest, MetLife, DNOA` 
+      error: `Unknown portal: ${portal}. Valid options are: DentaQuest, MetLife, Cigna, DNOA` 
     });
   }
   
@@ -123,6 +126,29 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
         // Send event to frontend to show OTP input
         for (const client of sseClients) {
           client.write(`event: otp_required\ndata: {"message": "Enter OTP code"}\n\n`);
+        }
+        
+        // Wait for OTP from frontend
+        const otp = await otpPromise;
+        broadcastLog(`📝 OTP received: ${otp}`);
+        return otp;
+      });
+    } else if (portalLower === 'cigna') {
+      // Cigna also needs OTP handler
+      let otpPromiseResolve = null;
+      const otpPromise = new Promise(resolve => { otpPromiseResolve = resolve; });
+      
+      // Store OTP resolver for later use
+      req.app.locals.otpResolvers = req.app.locals.otpResolvers || {};
+      req.app.locals.otpResolvers[req.id || Date.now()] = otpPromiseResolve;
+      
+      await service.initialize(isHeadless, broadcastLog, async () => {
+        broadcastLog('🔔 Cigna OTP Required! Please enter the 6-digit verification code');
+        broadcastLog('⏸️ Waiting for OTP input...');
+        
+        // Send event to frontend to show OTP input
+        for (const client of sseClients) {
+          client.write(`event: otp_required\ndata: {"message": "Enter Cigna OTP code"}\n\n`);
         }
         
         // Wait for OTP from frontend
@@ -166,6 +192,9 @@ app.post('/api/extract', checkApiKey, async (req, res) => {
         patient: metlifeData.patient,
         timestamp: metlifeData.timestamp
       };
+    } else if (portalLower === 'cigna') {
+      // Cigna retourne directement le format avec summary
+      data = await service.extractPatientData(patient, broadcastLog);
     } else {
       data = await service.extractPatientData(patient, broadcastLog);
     }

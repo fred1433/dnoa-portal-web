@@ -952,19 +952,25 @@ class CignaService {
       }
 
       // Extract from the procedures table using specific data-test attributes
+      // Wait a bit for dynamic content to load (network latency in production)
+      await page.waitForTimeout(3000);
+      
       const proceduresTableCount = await page.locator('table[data-test="procedures-table"]').count();
       onLog(`   Found ${proceduresTableCount} procedures tables`);
       
       const proceduresTable = await page.locator('table[data-test="procedures-table"]').first();
       
-      if (proceduresTableCount > 0 && await proceduresTable.isVisible({ timeout: 2000 })) {
+      if (proceduresTableCount > 0 && await proceduresTable.isVisible({ timeout: 5000 })) {
         // Try with data-test attribute first, then fallback to all tbody tr
         let rows = await proceduresTable.locator('tbody tr[data-test="procedures-table-row"]').all();
+        onLog(`   Rows with data-test="procedures-table-row": ${rows.length}`);
+        
         if (rows.length === 0) {
           onLog(`   No rows with data-test attribute, trying all tbody tr`);
           rows = await proceduresTable.locator('tbody tr').all();
+          onLog(`   All tbody tr rows: ${rows.length}`);
         }
-        onLog(`   Found ${rows.length} rows in procedures table`);
+        onLog(`   Processing ${rows.length} rows in procedures table`);
         
         for (const row of rows) {
           // Extract using specific data-test attributes
@@ -1046,6 +1052,7 @@ class CignaService {
 
     // Fallback to text extraction if no services found with specific selectors
     if (services.length === 0) {
+      onLog(`   ⚠️ No services found with specific selectors, trying fallback text extraction`);
       const text = (await page.textContent('body').catch(() => '')) || '';
       
       // Try extracting summary amounts from text

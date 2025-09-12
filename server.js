@@ -7,6 +7,7 @@ const MetLifeService = require('./metlife-service');
 const CignaService = require('./cigna-service');
 const monitor = require('./monitor');
 const cron = require('node-cron');
+const checkLocation = require('./check-location');
 require('dotenv').config();
 
 const app = express();

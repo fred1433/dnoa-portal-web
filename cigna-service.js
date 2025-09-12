@@ -42,7 +42,10 @@ class CignaService {
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--disable-blink-features=AutomationControlled',
-        '--window-size=1600,1000'
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--window-size=1600,1000',
+        '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       ],
       slowMo: headless ? 0 : 150
     });
@@ -51,6 +54,7 @@ class CignaService {
       viewport: { width: 1500, height: 900 },
       locale: 'en-US',
       timezoneId: 'America/New_York',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     };
 
     if (fs.existsSync(STORAGE_STATE_FILE)) {

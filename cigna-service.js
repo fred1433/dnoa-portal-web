@@ -692,16 +692,21 @@ class CignaService {
     try {
       const link = this.page.getByRole('link', { name: /View Claims/i });
       if (await link.isVisible({ timeout: 5000 })) {
+        onLog('💰 Clicking "View Claims" link...');
         await link.click();
-        await this.page.waitForLoadState('networkidle');
-        await this.page.waitForTimeout(1000);
+        await this.page.waitForLoadState('domcontentloaded');
+        await this.page.waitForTimeout(2000); // Give time for claims to load
         onLog('🧭 Claims page opened');
         return;
       }
-    } catch {}
+    } catch (e) {
+      onLog(`   Could not find "View Claims" link: ${e.message}`);
+    }
     // Fallback: direct URL (not guaranteed, but try a generic path)
     try {
+      onLog('   Fallback: navigating directly to claims search page');
       await this.safeGoto('https://cignaforhcp.cigna.com/app/claim/search', onLog);
+      await this.page.waitForTimeout(3000); // Extra wait when using direct navigation
     } catch {}
   }
 
@@ -754,13 +759,18 @@ class CignaService {
   async parseClaimsTableHeuristically(onLog = this.onLog || console.log) {
     // Try using specific selectors for Cigna's table structure first
     try {
-      // Wait a bit for the table to be fully loaded
-      await this.page.waitForTimeout(2000);
+      // Wait for the table to appear (longer timeout for slower connections)
+      onLog(`   Waiting for claims table to load...`);
+      await this.page.waitForSelector('table[data-test="claims-threesixty-search-result-table"]', { 
+        timeout: 15000,
+        state: 'visible'
+      }).catch(() => {
+        onLog(`   ⚠️ Claims table not found after 15s`);
+      });
       
       const claimsTable = await this.page.locator('table[data-test="claims-threesixty-search-result-table"]').first();
-      onLog(`   Looking for claims table with selector: table[data-test="claims-threesixty-search-result-table"]`);
       
-      if (await claimsTable.isVisible({ timeout: 5000 })) {
+      if (await claimsTable.isVisible({ timeout: 1000 })) {
         onLog(`   ✓ Claims table found`);
         const rows = await claimsTable.locator('tbody tr').all();
         const claims = [];

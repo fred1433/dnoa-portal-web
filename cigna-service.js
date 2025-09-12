@@ -249,34 +249,76 @@ class CignaService {
       
       // Si l'OTP a été entré manuellement, on ne remplit pas le champ
       if (otp !== 'manual') {
+        onLog(`📝 OTP received: ${otp}`);
         await otpField.fill(otp);
+        await this.page.waitForTimeout(500); // Small delay after filling OTP
 
-        // trust device
+        // trust device - select "Don't ask me for a code the next time I log in"
         if ((process.env.CIGNA_TRUST_DEVICE || 'true').toLowerCase() === 'true') {
           try {
-            await this.page.locator('label', { hasText: "Don't ask me for a code" }).locator('i').click();
-            onLog('🔒 Trust this device ✓');
-          } catch { /* non-blocking */ }
+            // Use check() instead of click() - it's designed for radio buttons and handles overlays
+            const rememberRadio = this.page.locator('[data-test="rdo-remember-yes"]');
+            await rememberRadio.check({ timeout: 5000 });
+            await this.page.waitForTimeout(200);
+            
+            // Verify it's actually checked
+            const isChecked = await rememberRadio.isChecked().catch(() => false);
+            if (isChecked) {
+              onLog('🔒 Don\'t ask for code next time ✓');
+            } else {
+              onLog('   ⚠️ Radio button not checked after check() call');
+            }
+          } catch (e) { 
+            // Try fallback approaches
+            try {
+              // Fallback 1: Click the label directly
+              await this.page.locator('label[for="rememberYes"]').click({ timeout: 3000 });
+              onLog('🔒 Don\'t ask for code next time ✓ (via label click)');
+            } catch (e2) {
+              // Not critical - extraction still works even if this fails
+              onLog(`   ⚠️ Could not select "Don\'t ask for code" (non-critical): ${e.message.split('\n')[0]}`);
+            }
+          }
         }
 
+        // Now submit the form
         await this.page.locator('[data-test="btn-submit"]').click();
+        onLog('✅ OTP submitted successfully');
       }
       
       // Attendre que la page charge après OTP
       try {
-        await this.page.waitForLoadState('networkidle', { timeout: 5000 });
+        // Wait for navigation away from MFA page
+        await this.page.waitForURL((url) => !url.pathname.includes('/mfa'), { timeout: 10000 });
+        onLog('   ✓ Navigated away from MFA page');
       } catch {
-        onLog('   Page still loading after OTP, continuing...');
+        onLog('   ⚠️ Still on MFA page after 10s, checking if we need to submit again...');
+        
+        // Check if we're still on the MFA page
+        const stillOnMFA = await this.page.locator('[data-test="txt-verification-code"]').isVisible().catch(() => false);
+        if (stillOnMFA) {
+          // Try submitting again
+          const submitBtn = this.page.locator('[data-test="btn-submit"]');
+          if (await submitBtn.isVisible().catch(() => false)) {
+            await submitBtn.click();
+            onLog('   Clicked submit again');
+            await this.page.waitForURL((url) => !url.pathname.includes('/mfa'), { timeout: 10000 });
+          }
+        }
       }
+      
+      await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
     }
 
-    // Validate app entry
-    await this.page.waitForTimeout(1500);
-    const logged = await this.page.locator('[data-test="primary-nav-child-chcp.patient.search"]').count()
-      .catch(() => 0);
-    if (logged === 0) {
+    // Validate app entry - wait for navigation menu
+    try {
+      await this.page.waitForSelector('[data-test="primary-nav-child-chcp.patient.search"]', { timeout: 10000 });
+      onLog('   ✓ Navigation menu found');
+    } catch {
+      const currentUrl = this.page.url();
       const body = await this.page.textContent('body').catch(() => '');
-      onLog(`⚠️ Post-login page did not show nav. Body sample: ${String(body).slice(0, 300)}...`);
+      onLog(`⚠️ Post-login page did not show nav. URL: ${currentUrl}`);
+      onLog(`   Body sample: ${String(body).slice(0, 300)}...`);
       throw new Error('Cigna login failed or unexpected post-login state');
     }
 

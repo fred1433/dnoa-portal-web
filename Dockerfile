@@ -5,11 +5,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install Node dependencies
-RUN npm install
+# Install Node dependencies WITHOUT running postinstall
+RUN npm install --ignore-scripts
 
-# Copy application files
+# Copy application files (including TypeScript source)
 COPY . .
+
+# Now run the TypeScript build
+RUN npm run build
 
 # The browsers are already installed in the Playwright image
 # No need to run playwright install

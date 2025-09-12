@@ -789,6 +789,9 @@
             logsContainer.innerHTML = '';
             logsSection.classList.add('active');
             resultsSection.classList.remove('active');
+            // Clear previous results content
+            document.getElementById('summaryGrid').innerHTML = '';
+            document.getElementById('cdtCodesSection').innerHTML = '';
             statusBadge.textContent = 'Running';
             statusBadge.className = 'status-badge running';
             

@@ -46,57 +46,8 @@ jobs:
         rm -rf scrapers/dental-portal/.github
         rm -rf scrapers/dental-portal/*-session/storageState.json
         
-        # Update README with latest status
-        cat > scrapers/dental-portal/README.md << 'ENDREADME'
-# Dental Portal Extractor
-
-## 🎯 Overview
-Complete dental insurance portal automation system with 5 portals fully integrated.
-
-## 🚀 Live Demo
-- **Production**: https://dental-portal-extractor.onrender.com/?key=demo2024secure
-- **Monitor**: https://dental-portal-extractor.onrender.com/monitor?key=demo2024secure
-
-## ✅ Completed Portals (5/42)
-
-| Portal | Status | Features | CDT Codes |
-|--------|--------|----------|-----------|
-| DNOA | ✅ Complete | API Direct | ✅ Yes |
-| MetLife | ✅ Complete | Playwright + Session | ✅ Yes |
-| DentaQuest | ✅ Complete | API Direct | ✅ Yes |
-| Cigna | ✅ Complete | Playwright + OTP | ✅ Yes (10 codes) |
-| Aetna | ✅ Complete | Session Persistence | ✅ Yes |
-
-## 📊 Features
-- ✅ Patient eligibility verification
-- ✅ Benefits and coverage details
-- ✅ CDT procedure codes extraction
-- ✅ Deductibles and maximums tracking
-- ✅ Claims history retrieval
-- ✅ Session persistence (30+ days)
-- ✅ Real-time monitoring dashboard
-- ✅ Parallel portal processing
-
-## 🛠️ Architecture
-- **Runtime**: Node.js v18+
-- **Automation**: Playwright
-- **API**: Express + SSE
-- **Sessions**: Persistent storage
-- **Deployment**: Render (Production)
-
-## 📈 Performance
-- Average extraction: 15-30 seconds
-- Success rate: 95%+
-- Session persistence: 30-90 days
-- Parallel processing: All portals simultaneously
-
-## 👥 Team
-- **Lead Developer**: Frédéric de Lavenne de Choulot
-- **Project Manager**: Donglin Liang
-
-## 📅 Last Updated
-$(date '+%B %d, %Y')
-ENDREADME
+        # Copy original README to Azure folder
+        cp README.md scrapers/dental-portal/ 2>/dev/null || true
         
         # Add and commit changes
         git add .

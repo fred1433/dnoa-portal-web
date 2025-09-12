@@ -30,8 +30,8 @@ jobs:
         mkdir -p temp-azure
         cd temp-azure
         
-        # Clone Azure repo with PAT authentication
-        git clone https://PAT:${AZURE_DEVOPS_PAT}@dev.azure.com/Simplifi-dentistry/AI-Powered-Scrapping/_git/AI-Powered-Scrapping .
+        # Clone Azure repo with PAT authentication and no terminal prompts
+        GIT_TERMINAL_PROMPT=0 git clone https://PAT:${AZURE_DEVOPS_PAT}@dev.azure.com/Simplifi-dentistry/AI-Powered-Scrapping/_git/AI-Powered-Scrapping .
         
         # Create or update scrapers/dental-portal directory
         mkdir -p scrapers/dental-portal

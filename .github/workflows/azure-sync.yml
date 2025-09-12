@@ -30,9 +30,8 @@ jobs:
         mkdir -p temp-azure
         cd temp-azure
         
-        # Clone Azure repo with proper authentication
-        git -c http.extraheader="AUTHORIZATION: Basic $(echo -n :${AZURE_DEVOPS_PAT} | base64)" \
-            clone https://dev.azure.com/Simplifi-dentistry/AI-Powered-Scrapping/_git/AI-Powered-Scrapping .
+        # Clone Azure repo with PAT in URL
+        git clone https://${AZURE_DEVOPS_PAT}@dev.azure.com/Simplifi-dentistry/AI-Powered-Scrapping/_git/AI-Powered-Scrapping .
         
         # Create or update scrapers/dental-portal directory
         mkdir -p scrapers/dental-portal
@@ -58,10 +57,7 @@ jobs:
         COMMIT_MSG="🔄 Sync from GitHub: $(git --git-dir=../.git log -1 --pretty=%B | head -1)"
         git commit -m "$COMMIT_MSG" || echo "No changes to commit"
         
-        # Push to Azure DevOps with authentication
-        git -c http.extraheader="AUTHORIZATION: Basic $(echo -n :${AZURE_DEVOPS_PAT} | base64)" \
-            push origin main || \
-        git -c http.extraheader="AUTHORIZATION: Basic $(echo -n :${AZURE_DEVOPS_PAT} | base64)" \
-            push origin master || \
-        git -c http.extraheader="AUTHORIZATION: Basic $(echo -n :${AZURE_DEVOPS_PAT} | base64)" \
-            push origin dev
+        # Push to Azure DevOps
+        git push origin main || \
+        git push origin master || \
+        git push origin dev

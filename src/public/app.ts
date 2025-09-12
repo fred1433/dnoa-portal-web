@@ -272,12 +272,12 @@ function hideError(): void {
 
 // ============= Log Display =============
 
-function addLog(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
+function addLog(message: string, _level: 'info' | 'warning' | 'error' = 'info'): void {
     const logsContainer = safeGetElement<HTMLElement>('logsContainer');
     if (!logsContainer) return;
     
     const logEntry = document.createElement('div');
-    logEntry.className = `log-entry ${level}`;
+    logEntry.className = 'log-line';
     logEntry.textContent = message;
     logsContainer.appendChild(logEntry);
     logsContainer.scrollTop = logsContainer.scrollHeight;
@@ -327,18 +327,16 @@ function displayResults(data: ExtractionResult): void {
                     <div class="value">$${formatAmount(maxInfo.remaining || 0)}</div>
                     <div class="subtitle">Remaining of $${formatAmount(maxInfo.amount || 0)}</div>
                 </div>
+                <div class="summary-card" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #10b981; grid-column: span 2;">
+                    <h4 style="color: #065f46;">🦷 CDT PROCEDURE CODES</h4>
+                    <div class="value" style="color: #065f46; font-size: 32px;">${summary.totalCDTCodes || 0}</div>
+                    <div class="subtitle" style="color: #047857; font-weight: 600;">Dental procedures successfully extracted!</div>
+                </div>
                 ${summary.benefitCategories !== undefined ? `
                 <div class="summary-card">
                     <h4>Benefits</h4>
                     <div class="value">${summary.benefitCategories}</div>
                     <div class="subtitle">Coverage categories</div>
-                </div>
-                ` : ''}
-                ${summary.totalCDTCodes !== undefined ? `
-                <div class="summary-card">
-                    <h4>✅ CDT Codes</h4>
-                    <div class="value">${summary.totalCDTCodes}</div>
-                    <div class="subtitle">Procedures extracted</div>
                 </div>
                 ` : ''}
             `;
@@ -417,40 +415,46 @@ function displayCDTCodesFromArray(cdtCodes: CDTCode[]): void {
     
     const cdtSection = document.createElement('div');
     cdtSection.id = 'cdtSection';
-    cdtSection.className = 'cdt-codes-section';
+    cdtSection.style.marginTop = '30px';
+    
+    // Limit to first 15 codes for display
+    const displayCodes = cdtCodes.slice(0, 15);
+    const hasMore = cdtCodes.length > 15;
+    
     cdtSection.innerHTML = `
-        <div class="cdt-header">
-            <h2>🦷 CDT PROCEDURE CODES</h2>
-            <span class="cdt-count">${cdtCodes.length}</span>
-            <p>Dental procedures successfully extracted!</p>
-        </div>
-        <div class="cdt-success-message">
-            <span class="success-icon">✅</span>
-            <span>CDT Codes Successfully Extracted - ${cdtCodes.length} Dental Procedures</span>
-        </div>
-        <p class="cdt-description">
-            Complete dental procedure history for ${extractedData?.summary?.patientName || 'patient'}:
-        </p>
-        <table class="cdt-table">
-            <thead>
-                <tr>
-                    <th>CDT Code</th>
-                    <th>Description</th>
-                    <th>Date</th>
-                    <th>Tooth</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${cdtCodes.map(code => `
-                    <tr>
-                        <td class="code-cell">${code.code || '-'}</td>
-                        <td>${code.description || 'Dental Procedure'}</td>
-                        <td>${code.serviceDate || code.date || '-'}</td>
-                        <td>${code.toothNumber || code.tooth || '-'}</td>
+        <h3 style="color: #065f46; margin-bottom: 15px;">
+            ✅ CDT Codes Successfully Extracted - ${cdtCodes.length} Dental Procedures
+        </h3>
+        <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 10px; padding: 20px;">
+            <p style="color: #047857; margin-bottom: 15px; font-weight: 600;">
+                Complete dental procedure history for ${extractedData?.summary?.patientName || 'patient'}:
+            </p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #d1fae5;">
+                        <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">CDT Code</th>
+                        <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">Description</th>
+                        <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">Date</th>
+                        <th style="padding: 10px; text-align: left; color: #065f46; border-bottom: 2px solid #10b981;">Tooth</th>
                     </tr>
-                `).join('')}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${displayCodes.map((code, index) => `
+                        <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                            <td style="padding: 8px; color: #065f46; font-weight: 600;">${code.code || '-'}</td>
+                            <td style="padding: 8px; color: #374151;">${code.description || 'Dental Procedure'}</td>
+                            <td style="padding: 8px; color: #374151;">${code.serviceDate || code.date || '-'}</td>
+                            <td style="padding: 8px; color: #374151;">${code.toothNumber || code.tooth || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ${hasMore ? `
+                <div style="padding: 10px; color: #047857; font-style: italic; text-align: center; border-top: 1px solid #d1fae5; margin-top: 10px;">
+                    ... and ${cdtCodes.length - 15} more procedures (download full JSON for complete list)
+                </div>
+            ` : ''}
+        </div>
     `;
     
     const cdtCodesSection = safeGetElement<HTMLElement>('cdtCodesSection');
